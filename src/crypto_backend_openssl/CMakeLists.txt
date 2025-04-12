@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Find OpenSSL within this backend's scope
-find_package(OpenSSL REQUIRED)
+# OpenSSL is now found in the parent scope
 message(STATUS "Found OpenSSL ${OpenSSL_VERSION} for backend cpace_backend_openssl")
 
 add_library(cpace_backend_openssl OBJECT
@@ -16,13 +15,13 @@ target_include_directories(cpace_backend_openssl PUBLIC
     # $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 )
 
-# Associate OpenSSL usage requirements (include directories) with this target.
-# Linking an OBJECT library against an INTERFACE library propagates the
-# necessary include paths for compiling this target's sources.
-# OpenSSL_INCLUDE_DIR is set by find_package(OpenSSL) in the parent scope (src/CMakeLists.txt).
+# Associate OpenSSL usage requirements with this target
 target_include_directories(cpace_backend_openssl PRIVATE
-    ${OpenSSL_INCLUDE_DIR}
+    ${OPENSSL_INCLUDE_DIR}
 )
+
+# Explicitly link against OpenSSL for this object library to have access to headers
+target_link_libraries(cpace_backend_openssl PRIVATE OpenSSL::Crypto)
 
 # Actual library linking still happens in parent scope (src/CMakeLists.txt)
 # when the final easy_cpace_core library is created.

@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.10) # Add if not already present
 
 # --- Find Dependencies (Conditionally) ---
-# Dependencies like OpenSSL and MbedTLS will be found within their
-# respective backend subdirectories (crypto_backend_*/CMakeLists.txt).
-# The imported targets (e.g., OpenSSL::Crypto) will still be available
-# globally after the add_subdirectory call.
+# Find dependencies at this level to ensure targets are available in this scope
+if(CPACE_USE_OPENSSL)
+    find_package(OpenSSL REQUIRED)
+    message(STATUS "Found OpenSSL in src scope for linking")
+endif()
+
+# MbedTLS dependency is still found within its backend subdirectory
+# but we should move that here too for consistency
 
 # Example for MbedTLS if it were needed here (it's not currently, find is moved):
 # if(CPACE_USE_MBEDTLS)

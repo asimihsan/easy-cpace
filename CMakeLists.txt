@@ -27,13 +27,6 @@ endif()
 # This will build the library (core + selected backends)
 add_subdirectory(src)
 
-# --- Add Public Include Directory ---
-# This is handled correctly within src/CMakeLists.txt and via install rules
-# target_include_directories(easy_cpace_core INTERFACE
-#    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#    $<INSTALL_INTERFACE:include> # For installation
-# )
-
 # --- Add Tests ---
 if(CPACE_BUILD_TESTS)
     # Check if Unity is available (e.g., via submodule)
@@ -58,8 +51,9 @@ install(TARGETS easy_cpace_core # Install the actual core library target, not th
     EXPORT EasyCPaceTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # For shared libs on Windows
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+
+    # For shared libs on Windows
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(FILES include/easy_cpace.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
@@ -75,7 +69,8 @@ export(EXPORT EasyCPaceTargets
     NAMESPACE EasyCPace::
 )
 configure_package_config_file(
-    "cmake/EasyCPaceConfig.cmake.in"
+    # Use the source file location directly
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EasyCPaceConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/EasyCPaceConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/EasyCPace"
 )
@@ -89,11 +84,3 @@ install(EXPORT EasyCPaceTargets
     NAMESPACE EasyCPace::
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/EasyCPace"
 )
-
-# Create cmake/EasyCPaceConfig.cmake.in (Needed for installation)
-# Note: The actual file content is created separately using a SEARCH/REPLACE block
-# This ensures the file exists for configure_package_config_file
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmake")
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EasyCPaceConfig.cmake.in")
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EasyCPaceConfig.cmake.in" "") # Create dummy if not exists
-endif()

@@ -1,0 +1,74 @@
+#ifndef CPACE_UTILS_H
+#define CPACE_UTILS_H
+
+#include "../crypto_iface/crypto_provider.h" // For constants
+#include <stddef.h>
+#include <stdint.h>
+
+/**
+ * @brief Constant-time memory comparison.
+ * @param a Pointer to the first buffer.
+ * @param b Pointer to the second buffer.
+ * @param size Number of bytes to compare.
+ * @return 0 if a and b are identical, non-zero otherwise.
+ */
+int cpace_const_time_memcmp(const void *a, const void *b, size_t size);
+
+/**
+ * @brief Helper to check if a point is the X25519 identity element (all zeros).
+ * Uses constant-time compare.
+ * @param point Pointer to the point buffer (CPACE_CRYPTO_POINT_BYTES bytes).
+ * @return 1 if point is identity, 0 otherwise.
+ */
+int cpace_is_identity(const uint8_t point[CPACE_CRYPTO_POINT_BYTES]);
+
+/**
+ * @brief Concatenates inputs for the Intermediate Session Key (ISK) derivation hash.
+ * Format: label || sid || K || transcript
+ * where transcript is Ya || ADa || Yb || ADb (or similar based on role/order)
+ *
+ * Note: This implementation assumes ADa and ADb are concatenated directly.
+ * A more flexible implementation might use lv_cat for AD if needed.
+ *
+ * @param dsi_label The domain separation label (e.g., "CPACE_CRYPTO_DSI_ISK").
+ * @param dsi_label_len Length of dsi_label.
+ * @param sid Session ID buffer.
+ * @param sid_len Length of sid.
+ * @param K Shared secret point K buffer (CPACE_CRYPTO_POINT_BYTES).
+ * @param Ya Initiator's public key buffer (CPACE_CRYPTO_POINT_BYTES).
+ * @param ADa Initiator's associated data buffer.
+ * @param ADa_len Length of ADa.
+ * @param Yb Responder's public key buffer (CPACE_CRYPTO_POINT_BYTES).
+ * @param ADb Responder's associated data buffer.
+ * @param ADb_len Length of ADb.
+ * @param out Buffer to write the concatenated result.
+ * @param out_size Size of the output buffer.
+ * @return The total number of bytes written to 'out', or 0 on error (e.g., buffer too small).
+ */
+size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label, size_t dsi_label_len, const uint8_t *sid,
+                                      size_t sid_len, const uint8_t K[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t Ya[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADa, size_t ADa_len,
+                                      const uint8_t Yb[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADb, size_t ADb_len,
+                                      uint8_t *out, size_t out_size);
+
+/**
+ * @brief Constructs the input string for the generator hash (gen_str).
+ * Format roughly follows draft-irtf-cfrg-cpace `generator_string` function:
+ * DSI || PRS || ZPAD || L(CI) || CI || L(sid) || sid
+ * Uses simplified length encoding (single byte) assuming lengths fit.
+ * ZPAD ensures the first hash block is full.
+ *
+ * @param prs Password Related String.
+ * @param prs_len Length of prs.
+ * @param ci Channel Identifier.
+ * @param ci_len Length of ci (MUST be <= 255).
+ * @param sid Session ID.
+ * @param sid_len Length of sid (MUST be <= 255).
+ * @param out Buffer to write the concatenated result.
+ * @param out_size Size of the output buffer.
+ * @return The total number of bytes written to 'out', or 0 on error (e.g., buffer too small, length overflow).
+ */
+size_t cpace_construct_generator_hash_input(const uint8_t *prs, size_t prs_len, const uint8_t *ci, size_t ci_len,
+                                            const uint8_t *sid, size_t sid_len, uint8_t *out, size_t out_size);
+
+#endif // CPACE_UTILS_H

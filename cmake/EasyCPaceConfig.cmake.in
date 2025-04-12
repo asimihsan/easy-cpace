@@ -22,16 +22,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/EasyCPaceTargets.cmake")
 
 # Check if the components requested by the user (e.g., find_package(EasyCPace COMPONENTS MbedTLS))
 # were actually found and are available in this installation.
-# check_required_components(EasyCPace)
-# --> Alternative: Check against the list we built above
-# foreach(COMPONENT ${EasyCPace_FIND_COMPONENTS})
-#   if(NOT COMPONENT IN_LIST EasyCPace_COMPONENTS)
-#     message(FATAL_ERROR "Requested component ${COMPONENT} not available in this EasyCPace build.")
-#   endif()
-# endforeach()
-# The check_required_components(EasyCPace) might be sufficient if you don't expose specific components like OpenSSL/MbedTLS
+check_required_components(EasyCPace)
 
-# Simple check without components:
-if(NOT TARGET EasyCPace::easy_cpace)
-    message(FATAL_ERROR "EasyCPace targets not found. The EasyCPace installation may be corrupted.")
+# Check for the main library target using the NAMESPACE defined in install(EXPORT)
+if(NOT TARGET EasyCPace::easy_cpace_core) # Check for the actual target name imported under the namespace
+    message(FATAL_ERROR "EasyCPace target (EasyCPace::easy_cpace_core) not found. The EasyCPace installation may be corrupted.")
 endif()

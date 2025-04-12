@@ -1,10 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Find Mbed TLS package (adjust find logic if necessary for your system)
-# This assumes Mbed TLS provides CMake config files or a FindMbedTLS.cmake module is available.
-# You might need to provide hints like -DMBEDTLS_ROOT_DIR=/path/to/mbedtls
-find_package(MbedTLS REQUIRED COMPONENTS crypto psa) # Request crypto and PSA components
-
 add_library(cpace_backend_mbedtls OBJECT # Changed to OBJECT
     mbedtls_backend.c
     # mbedtls_elligator2.c # Add later when implemented

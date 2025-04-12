@@ -1,5 +1,6 @@
 build:
-    mise x -- cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    mise x -- cmake -S . -B build -G Ninja
+    mise x -- cmake --build build
 
 lint-fix:
     #!/usr/bin/env bash

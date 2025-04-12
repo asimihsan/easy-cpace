@@ -148,7 +148,7 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 // Ya/Yb order depends on a role.
 static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t *isk_out)
 {
-    uint8_t isk_input_buf[1024]; // Adjust size if needed
+    uint8_t isk_input_buf[1024];                      // Adjust size if needed
     const uint8_t DSI_ISK[] = "CPACE_CRYPTO_DSI_ISK"; // Choose appropriate label
     const uint8_t *ya_ptr;
     const uint8_t *yb_ptr;

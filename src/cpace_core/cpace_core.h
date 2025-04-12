@@ -1,7 +1,7 @@
 #ifndef CPACE_CORE_H
 #define CPACE_CORE_H
 
-#include "../../include/easy_cpace.h" // For public types like cpace_role_t, CPACE_PUBLIC_BYTES etc.
+#include "../../include/easy_cpace.h"
 #include "../crypto_iface/crypto_provider.h"
 #include <stddef.h>
 #include <stdint.h>

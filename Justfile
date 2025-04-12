@@ -1,5 +1,5 @@
 build:
-    mise x -- cmake -B build -S .
+    mise x -- cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
 lint-fix:
     #!/usr/bin/env bash
@@ -32,3 +32,7 @@ lint:
 # Format a specific file
 format-file file:
     clang-format -i "{{file}}"
+
+clean:
+    rm -rf build
+    rm -rf cmake-build-debug

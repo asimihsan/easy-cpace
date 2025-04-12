@@ -90,3 +90,4 @@ CMakeUserPresets.json
 
 .aider*
 .jj
+build/

@@ -28,11 +28,11 @@ endif()
 add_subdirectory(src)
 
 # --- Add Public Include Directory ---
-# Make include/easy_cpace.h available to users and examples/tests
-target_include_directories(easy_cpace_core INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include> # For installation
-)
+# This is handled correctly within src/CMakeLists.txt and via install rules
+# target_include_directories(easy_cpace_core INTERFACE
+#    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#    $<INSTALL_INTERFACE:include> # For installation
+# )
 
 # --- Add Tests ---
 if(CPACE_BUILD_TESTS)

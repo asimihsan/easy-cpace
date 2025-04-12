@@ -54,6 +54,26 @@ const crypto_provider_t *cpace_get_provider_openssl(void);
  */
 const crypto_provider_t *cpace_get_provider_mbedtls(void);
 
+// --- OpenSSL Backend Specific Initialization ---
+// These are only needed when using the OpenSSL backend.
+
+/**
+ * @brief Initializes internal OpenSSL constants (e.g., for Elligator2).
+ * MUST be called once before performing CPace steps (start/respond) when
+ * using the OpenSSL provider. It is safe to call multiple times; subsequent
+ * calls have no effect unless easy_cpace_openssl_cleanup() has been called.
+ * Not thread-safe for the *first* initialization if called concurrently.
+ * @return CPACE_OK on success, CPACE_ERROR_CRYPTO_FAIL on failure.
+ */
+cpace_error_t easy_cpace_openssl_init(void);
+
+/**
+ * @brief Cleans up internal OpenSSL constants initialized by easy_cpace_openssl_init().
+ * Should be called when the OpenSSL provider is no longer needed to free resources.
+ * It is safe to call multiple times or if not initialized.
+ */
+void easy_cpace_openssl_cleanup(void);
+
 // --- Context Management ---
 /**
  * @brief Create a new CPace context.

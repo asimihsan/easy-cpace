@@ -21,3 +21,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Doxygen comments for API functions with `@brief`, `@param`, `@return`
 - Return error codes (`cpace_error_t`), positive for success
 - Secure coding practices: constant-time implementations, buffer size checking, memory zeroing
+- This is a C implementation for a cryptographic protocol. Hence methods needs to always be clearly documented in typical idiomatic way for C code, and always describe safety like memory, threading, etc.

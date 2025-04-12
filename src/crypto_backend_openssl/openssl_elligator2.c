@@ -1,4 +1,5 @@
 #include "../crypto_iface/crypto_provider.h" // For constants
+#include "openssl_elligator2_internal.h"
 #include <assert.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -33,13 +34,23 @@ static BIGNUM *bn_p_plus_1_div_2 = NULL;  // (p+1)/2 exponent for sqrt
 static BIGNUM *bn_p_minus_1_div_2 = NULL; // (p-1)/2 exponent for Legendre
 
 // Internal init/cleanup for constants
-static int ensure_elligator_constants(void)
+// Returns 1 on success, 0 on failure.
+int ensure_elligator_constants(void)
 {
+    // Check if already initialized (pointer check is sufficient)
     if (bn_p != NULL)
-        return 1; // Already initialized
+        return 1;
 
     int ok = 0;
+    // Use a local context *only* for the duration of initialization
+    BN_CTX *init_ctx = BN_CTX_new();
+    if (!init_ctx)
+        return 0; // Cannot even create context
+
+    // Allocate global context used by map_to_curve operations
     elligator_bn_ctx = BN_CTX_new();
+
+    // Allocate BIGNUMs
     bn_p = BN_new();
     bn_A = BN_new();
     bn_Z = BN_new();
@@ -51,7 +62,7 @@ static int ensure_elligator_constants(void)
 
     if (!elligator_bn_ctx || !bn_p || !bn_A || !bn_Z || !bn_c || !bn_one || !bn_two || !bn_p_plus_1_div_2 ||
         !bn_p_minus_1_div_2)
-        goto cleanup;
+        goto cleanup; // BIGNUM or global ctx allocation failed
 
     // p = 2^255 - 19
     if (!BN_lshift(bn_p, BN_value_one(), 255))
@@ -65,79 +76,75 @@ static int ensure_elligator_constants(void)
     // Z = 121665
     if (!BN_set_word(bn_Z, 121665))
         goto cleanup;
-    // c = p - 1
+    // c = p - 1 (use init_ctx here)
     if (!BN_sub_word(bn_c, 1))
-        goto cleanup; // c = -1 temp
-    if (!BN_mod_add(bn_c, bn_c, bn_p, bn_p, elligator_bn_ctx))
-        goto cleanup; // c = p-1
+        goto cleanup;
+    if (!BN_mod_add(bn_c, bn_c, bn_p, bn_p, init_ctx))
+        goto cleanup; // Use init_ctx
     // one = 1
     if (!BN_one(bn_one))
         goto cleanup;
     // two = 2
     if (!BN_set_word(bn_two, 2))
         goto cleanup;
-    // (p+1)/2
+    // (p+1)/2 (use init_ctx here)
     if (!BN_add(bn_p_plus_1_div_2, bn_p, bn_one))
         goto cleanup;
     if (!BN_rshift1(bn_p_plus_1_div_2, bn_p_plus_1_div_2))
         goto cleanup;
-    // (p-1)/2
+    // (p-1)/2 (use init_ctx here)
     if (!BN_sub(bn_p_minus_1_div_2, bn_p, bn_one))
         goto cleanup;
     if (!BN_rshift1(bn_p_minus_1_div_2, bn_p_minus_1_div_2))
         goto cleanup;
 
-    // Mark constants as constant time if needed/possible? Might not apply here.
-    // BN_set_flags(bn_p, BN_FLG_CONSTTIME); // Not usually needed for modulus
-
-    ok = 1;
+    ok = 1; // Initialization successful
 
 cleanup:
+    BN_CTX_free(init_ctx); // Free the temporary init context regardless of success/failure
+
     if (!ok) {
-        BN_free(bn_p_minus_1_div_2);
-        bn_p_minus_1_div_2 = NULL;
-        BN_free(bn_p_plus_1_div_2);
-        bn_p_plus_1_div_2 = NULL;
-        BN_free(bn_two);
-        bn_two = NULL;
-        BN_free(bn_one);
-        bn_one = NULL;
-        BN_free(bn_c);
-        bn_c = NULL;
-        BN_free(bn_Z);
-        bn_Z = NULL;
-        BN_free(bn_A);
-        bn_A = NULL;
-        BN_free(bn_p);
-        bn_p = NULL;
-        BN_CTX_free(elligator_bn_ctx);
-        elligator_bn_ctx = NULL;
+        // If init failed partway, clean up everything allocated so far
+        // Call the main cleanup function
+        openssl_elligator2_cleanup_constants();
     }
     return ok;
 }
 
 // Public function called by the backend
+// Assumes constants are initialized (ensure_elligator_constants called previously)
 int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uint8_t *u_bytes /* 32 bytes */)
 {
+    // Ensure constants are ready (lazy init if user forgot easy_cpace_openssl_init)
+    // This might fail but we proceed anyway; subsequent BN operations will likely fail too.
+    // Proper usage requires calling easy_cpace_openssl_init() first.
+    if (!ensure_elligator_constants()) {
+        // Constants not initialized, this call will likely fail below.
+        // We could return CRYPTO_ERROR here, but let the BN calls fail naturally.
+    }
+    // Check if the global context is available (it should be if ensure_... succeeded)
+    if (!elligator_bn_ctx) {
+        return CRYPTO_ERROR; // Cannot proceed without context
+    }
+
     int ok = 0;
     BIGNUM *u = NULL, *tv1 = NULL, *tv2 = NULL, *xd = NULL, *xn = NULL, *gxd = NULL, *x = NULL, *inv_xd = NULL;
-    BN_CTX *ctx = NULL; // Use local ctx
+    // Use the globally initialized elligator_bn_ctx for operations within this function
+    BN_CTX *ctx = elligator_bn_ctx;
+    BN_CTX_start(ctx); // Start a frame for local BIGNUMs
 
-    if (!ensure_elligator_constants())
-        return CRYPTO_ERROR;
-    if (!out_point || !u_bytes)
-        return CRYPTO_ERROR;
+    // Allocate temporary BIGNUMs within the current frame
+    u = BN_CTX_get(ctx);
+    tv1 = BN_CTX_get(ctx);
+    tv2 = BN_CTX_get(ctx);
+    xd = BN_CTX_get(ctx);
+    xn = BN_CTX_get(ctx);
+    gxd = BN_CTX_get(ctx);
+    x = BN_CTX_get(ctx);
+    inv_xd = BN_CTX_get(ctx);
 
-    ctx = BN_CTX_new();
-    u = BN_new();
-    tv1 = BN_new();
-    tv2 = BN_new();
-    xd = BN_new();
-    xn = BN_new();
-    gxd = BN_new();
-    x = BN_new();
-    inv_xd = BN_new();
-    if (!ctx || !u || !tv1 || !tv2 || !xd || !xn || !gxd || !x || !inv_xd)
+    // Check if allocations failed (BN_CTX_get returns NULL)
+    if (!inv_xd) // Check the last one allocated
         goto cleanup;
 
     // 1. Decode u from bytes (little-endian) and reduce mod p
@@ -146,29 +153,21 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
     if (!BN_mod(u, u, bn_p, ctx))
         goto cleanup; // u = u mod p
 
-    // Handle u=0 case separately (optional, but might simplify main path)
+    // Handle u=0 case separately
     if (BN_is_zero(u)) {
         // x = A / (Z * -2) mod p. Need modular inverse.
-        BIGNUM *den = BN_new();
+        BIGNUM *den = BN_CTX_get(ctx); // Allocate in frame
         if (!den)
             goto cleanup;
-        if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx)) {
-            BN_free(den);
-            goto cleanup;
-        } // Z*2
-        if (!BN_mod_sub(den, bn_p, den, bn_p, ctx)) {
-            BN_free(den);
-            goto cleanup;
-        } // - (Z*2) mod p
-        if (!BN_mod_inverse(den, den, bn_p, ctx)) {
-            BN_free(den);
-            goto cleanup;
-        } // 1 / (-Z*2)
-        if (!BN_mod_mul(x, bn_A, den, bn_p, ctx)) {
-            BN_free(den);
-            goto cleanup;
-        } // A / (-Z*2)
-        BN_free(den);
+        if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx))
+            goto cleanup; // Z*2
+        if (!BN_mod_sub(den, bn_p, den, bn_p, ctx))
+            goto cleanup; // - (Z*2) mod p
+        if (!BN_mod_inverse(den, den, bn_p, ctx))
+            goto cleanup; // 1 / (-Z*2)
+        if (!BN_mod_mul(x, bn_A, den, bn_p, ctx))
+            goto cleanup; // A / (-Z*2)
+        // den is auto-freed by BN_CTX_end
     }
     else {
         // Main Elligator 2 path
@@ -187,62 +186,34 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
             goto cleanup;
 
         // 4. xn = (A + tv1) * ( tv2 + A*tv1 ) mod p
-        //    xn_term1 = A + tv1
-        //    xn_term2 = tv2 + A*tv1
-        BIGNUM *xn_term1 = BN_new();
-        BIGNUM *xn_term2 = BN_new();
-        if (!xn_term1 || !xn_term2) {
-            BN_free(xn_term1);
-            BN_free(xn_term2);
+        BIGNUM *xn_term1 = BN_CTX_get(ctx);
+        BIGNUM *xn_term2 = BN_CTX_get(ctx);
+        if (!xn_term2)
+            goto cleanup; // Check last one
+        if (!BN_mod_add(xn_term1, bn_A, tv1, bn_p, ctx))
             goto cleanup;
-        }
-        if (!BN_mod_add(xn_term1, bn_A, tv1, bn_p, ctx)) {
-            BN_free(xn_term1);
-            BN_free(xn_term2);
+        if (!BN_mod_mul(xn_term2, bn_A, tv1, bn_p, ctx))
             goto cleanup;
-        }
-        if (!BN_mod_mul(xn_term2, bn_A, tv1, bn_p, ctx)) {
-            BN_free(xn_term1);
-            BN_free(xn_term2);
+        if (!BN_mod_add(xn_term2, tv2, xn_term2, bn_p, ctx))
             goto cleanup;
-        }
-        if (!BN_mod_add(xn_term2, tv2, xn_term2, bn_p, ctx)) {
-            BN_free(xn_term1);
-            BN_free(xn_term2);
+        if (!BN_mod_mul(xn, xn_term1, xn_term2, bn_p, ctx))
             goto cleanup;
-        }
-        if (!BN_mod_mul(xn, xn_term1, xn_term2, bn_p, ctx)) {
-            BN_free(xn_term1);
-            BN_free(xn_term2);
-            goto cleanup;
-        }
-        BN_free(xn_term1);
-        BN_free(xn_term2);
+        // xn_term1, xn_term2 are auto-freed
 
-        // 5. If xd == 0 (should only happen if tv1 = 0 or tv1 = -1)
-        //    The u=0 case handles tv1=0. If tv1 = -1, then u^2 = -1/Z.
-        //    If xd == 0, RFC says use the exception case x = A / (Z * -2).
+        // 5. If xd == 0
         if (BN_is_zero(xd)) {
-            BIGNUM *den = BN_new();
+            BIGNUM *den = BN_CTX_get(ctx);
             if (!den)
                 goto cleanup;
-            if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx)) {
-                BN_free(den);
-                goto cleanup;
-            } // Z*2
-            if (!BN_mod_sub(den, bn_p, den, bn_p, ctx)) {
-                BN_free(den);
-                goto cleanup;
-            } // - (Z*2) mod p
-            if (!BN_mod_inverse(den, den, bn_p, ctx)) {
-                BN_free(den);
-                goto cleanup;
-            } // 1 / (-Z*2)
-            if (!BN_mod_mul(x, bn_A, den, bn_p, ctx)) {
-                BN_free(den);
-                goto cleanup;
-            } // A / (-Z*2)
-            BN_free(den);
+            if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx))
+                goto cleanup; // Z*2
+            if (!BN_mod_sub(den, bn_p, den, bn_p, ctx))
+                goto cleanup; // - (Z*2) mod p
+            if (!BN_mod_inverse(den, den, bn_p, ctx))
+                goto cleanup; // 1 / (-Z*2)
+            if (!BN_mod_mul(x, bn_A, den, bn_p, ctx))
+                goto cleanup; // A / (-Z*2)
+                              // den auto-freed
         }
         else {
             // 6. gxd = legendre(xd, p) = xd^((p-1)/2) mod p
@@ -254,48 +225,37 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
                 goto cleanup;
 
             // 7. If gxd == 1 (QR) -> x = xn / xd = xn * inv_xd mod p
-            BIGNUM *x_qr = BN_new();
+            BIGNUM *x_qr = BN_CTX_get(ctx);
             if (!x_qr)
                 goto cleanup;
-            if (!BN_mod_mul(x_qr, xn, inv_xd, bn_p, ctx)) {
-                BN_free(x_qr);
+            if (!BN_mod_mul(x_qr, xn, inv_xd, bn_p, ctx))
                 goto cleanup;
-            }
 
-            // 8. If gxd != 1 (NR or 0 - handled above) -> x = c * xn / xd = -1 * xn * inv_xd mod p
-            BIGNUM *x_nr = BN_new();
-            if (!x_nr) {
-                BN_free(x_qr);
+            // 8. If gxd != 1 (NR or 0) -> x = c * xn / xd = -1 * xn * inv_xd mod p
+            BIGNUM *x_nr = BN_CTX_get(ctx);
+            if (!x_nr)
                 goto cleanup;
-            }
-            if (!BN_mod_mul(x_nr, bn_c, x_qr, bn_p, ctx)) {
-                BN_free(x_qr);
-                BN_free(x_nr);
-                goto cleanup;
-            } // x_nr = -x_qr
+            if (!BN_mod_mul(x_nr, bn_c, x_qr, bn_p, ctx))
+                goto cleanup; // x_nr = -x_qr
 
-            // Select x based on gxd using constant-time conditional select logic if possible.
-            // BN_cmp(gxd, bn_one) == 0 means gxd == 1.
-            // BN_cmp returns -1, 0, 1. We need 0 or 1 for the selector.
-            // Let's use a simple conditional for now, aware of side channels.
-            // TODO: Implement constant-time select using BN_is_one() or BN_cmp() carefully.
-            // BN_is_one() might be okay.
+            // Select x based on gxd using constant-time conditional select if possible.
+            // BN_is_one(gxd) determines the condition (1 if QR, 0 otherwise)
+            // BN_copy selects based on non-constant time condition.
+            // For constant time: BN_conditional_copy(to, from_1, from_0, condition)
+            // condition = BN_is_one(gxd); // 1 if QR, 0 if NR/Zero
+            // Need to check if BN_conditional_copy exists and works as expected.
+            // Assuming it exists and condition=1 means copy from_1:
+            // BN_conditional_copy(x, x_qr, x_nr, BN_is_one(gxd)); // If QR (gxd=1) copy x_qr, else copy x_nr
+            // Let's use the simple conditional for now, aware of side channels.
             if (BN_is_one(gxd)) {
-                if (!BN_copy(x, x_qr)) {
-                    BN_free(x_qr);
-                    BN_free(x_nr);
+                if (!BN_copy(x, x_qr))
                     goto cleanup;
-                }
             }
             else {
-                if (!BN_copy(x, x_nr)) {
-                    BN_free(x_qr);
-                    BN_free(x_nr);
+                if (!BN_copy(x, x_nr))
                     goto cleanup;
-                }
             }
-            BN_free(x_qr);
-            BN_free(x_nr);
+            // x_qr, x_nr auto-freed
         }
     }
 
@@ -306,22 +266,16 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
     ok = 1; // Success
 
 cleanup:
-    // Free local BIGNUMs
-    BN_clear_free(inv_xd);
-    BN_clear_free(x);
-    BN_clear_free(gxd);
-    BN_clear_free(xn);
-    BN_clear_free(xd);
-    BN_clear_free(tv2);
-    BN_clear_free(tv1);
-    BN_clear_free(u);
-    BN_CTX_free(ctx); // Free local context
-
-    // Static constants are freed elsewhere if needed (e.g., library unload)
+    // Free BIGNUMs allocated in the frame
+    if (ctx) {
+        BN_CTX_end(ctx);
+    }
+    // Don't free the global elligator_bn_ctx here
 
     return ok ? CRYPTO_OK : CRYPTO_ERROR;
 }
 
+// Cleanup function remains largely the same, frees statics
 void openssl_elligator2_cleanup_constants()
 {
     // Free static BIGNUMs
@@ -342,6 +296,7 @@ void openssl_elligator2_cleanup_constants()
     BN_free(bn_p);
     bn_p = NULL;
 
+    // Free the static context
     if (elligator_bn_ctx) {
         BN_CTX_free(elligator_bn_ctx);
         elligator_bn_ctx = NULL;

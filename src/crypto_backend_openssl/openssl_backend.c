@@ -1,5 +1,7 @@
+#include "../../include/easy_cpace.h"
 #include "../common/utils.h" // For cpace_const_time_memcmp
 #include "../crypto_iface/crypto_provider.h"
+#include "openssl_elligator2_internal.h" // For Elligator2 functions
 
 #include <assert.h>
 #include <openssl/crypto.h> // For CRYPTO_memcmp, OPENSSL_cleanse
@@ -8,8 +10,8 @@
 #include <openssl/rand.h>
 #include <string.h> // For memcpy
 
-// Forward declare Elligator2 function from the other file in this backend
-int openssl_elligator2_map_to_curve(uint8_t *out_point, const uint8_t *u);
+// --- State for Initialization ---
+static int openssl_backend_initialized = 0;
 
 // --- Hashing (SHA-512) ---
 
@@ -66,8 +68,6 @@ static int openssl_hash_final(crypto_hash_ctx_t *ctx, uint8_t *out)
     if (!ctx || !ctx->evp_ctx || !out)
         return CRYPTO_ERROR;
     unsigned int len = CPACE_CRYPTO_HASH_BYTES; // Should match EVP_MD_size
-    // Final implicitly resets the context in OpenSSL >= 1.1.1 ? Check docs.
-    // Let's reset explicitly just in case.
     int ret = EVP_DigestFinal_ex(ctx->evp_ctx, out, &len);
     // Reset after finalization to allow reuse
     if (openssl_hash_reset(ctx) == CRYPTO_ERROR) {
@@ -98,8 +98,8 @@ static int openssl_hash_digest(const uint8_t *data, size_t len, uint8_t *out, si
     if (EVP_DigestFinal_ex(ctx, full_hash, &hash_len) != 1)
         goto cleanup;
 
-    if (hash_len < out_len)
-        goto cleanup; // Should not happen for SHA512
+    if (hash_len < out_len) // Should not happen for SHA512
+        goto cleanup;
 
     memcpy(out, full_hash, out_len); // Take the first out_len bytes
     ret = CRYPTO_OK;
@@ -183,9 +183,12 @@ cleanup:
     return ret;
 }
 
-// Map to curve uses the function from the other file
+// Map to curve uses the function from openssl_elligator2.c
 static int openssl_map_to_curve(uint8_t *out_point, const uint8_t *u)
 {
+    // Relies on easy_cpace_openssl_init() having been called successfully.
+    // The map_to_curve function itself contains a fallback lazy init,
+    // but proper usage expects explicit init.
     return openssl_elligator2_map_to_curve(out_point, u);
 }
 
@@ -196,12 +199,14 @@ static void openssl_cleanse(void *ptr, size_t size) { OPENSSL_cleanse(ptr, size)
 static int openssl_const_time_memcmp(const void *a, const void *b, size_t size)
 {
     // CRYPTO_memcmp is OpenSSL's constant time compare function
-    return CRYPTO_memcmp(a, b, size);
+    // Returns 0 if equal, non-zero otherwise. Match the common util definition.
+    return CRYPTO_memcmp(a, b, size) == 0 ? 0 : 1; // Adapt return value
 }
 
 static int openssl_random_bytes(uint8_t *buf, size_t len)
 {
-    return RAND_bytes(buf, len); // Returns 1 on success
+    // RAND_bytes returns 1 on success, 0 or -1 on error.
+    return (RAND_bytes(buf, len) == 1) ? CRYPTO_OK : CRYPTO_ERROR;
 }
 
 // --- Provider Structures ---
@@ -235,13 +240,38 @@ static const crypto_provider_t openssl_provider_instance = {
 };
 
 // --- Public API Function to get the provider ---
-
-// Defined in include/easy_cpace.h
 const crypto_provider_t *cpace_get_provider_openssl(void)
 {
-    // Could add initialization checks here if OpenSSL needs explicit init,
-    // but modern OpenSSL often handles it automatically.
-    // Check OPENSSL_init_crypto() ? Or assume caller handles it / library does.
-    // For simplicity, just return the static instance.
+    // No initialization done here anymore. User must call easy_cpace_openssl_init().
     return &openssl_provider_instance;
+}
+
+// --- Public API Functions for OpenSSL Backend Init/Cleanup ---
+
+cpace_error_t easy_cpace_openssl_init(void)
+{
+    if (openssl_backend_initialized) {
+        return CPACE_OK; // Already initialized
+    }
+
+    // Call the internal Elligator2 constant initializer
+    if (ensure_elligator_constants() == 1) {
+        openssl_backend_initialized = 1;
+        return CPACE_OK;
+    }
+    else {
+        // Initialization failed
+        openssl_backend_initialized = 0;
+        return CPACE_ERROR_CRYPTO_FAIL;
+    }
+}
+
+void easy_cpace_openssl_cleanup(void)
+{
+    if (openssl_backend_initialized) {
+        // Call the internal Elligator2 constant cleanup
+        openssl_elligator2_cleanup_constants();
+        openssl_backend_initialized = 0;
+    }
+    // It's safe to call even if not initialized
 }

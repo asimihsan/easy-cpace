@@ -5,7 +5,8 @@ message(STATUS "Found OpenSSL ${OpenSSL_VERSION} for backend cpace_backend_opens
 
 add_library(cpace_backend_openssl OBJECT
     openssl_backend.c
-    # openssl_elligator2.c # Add later when implemented
+    openssl_elligator2_internal.h
+    openssl_elligator2.c
 )
 
 target_include_directories(cpace_backend_openssl PUBLIC

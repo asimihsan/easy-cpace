@@ -1,5 +1,5 @@
 build:
-    mise x -- cmake -S . -B build -G Ninja
+    mise x -- cmake -DCMAKE_VERBOSE_MAKEFILE=ON --debug-output -S . -B build -G Ninja
     mise x -- cmake --build build
 
 lint-fix:

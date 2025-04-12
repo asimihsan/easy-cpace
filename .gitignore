@@ -89,3 +89,4 @@ _deps
 CMakeUserPresets.json
 
 .aider*
+.jj

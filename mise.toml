@@ -1,2 +1,5 @@
 [tools]
+clang-format = "latest"
 cmake = "latest"
+fd = "latest"
+just = "latest"

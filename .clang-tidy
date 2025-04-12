@@ -14,7 +14,7 @@ Checks: '
   -clang-analyzer-unix.Stream,
   '
 WarningsAsErrors: ''
-HeaderFilterRegex: ''
+HeaderFilterRegex: '.*'
 FormatStyle: none
 
 CheckOptions:

@@ -1,0 +1,3 @@
+-I./src
+-I./include
+-std=c99

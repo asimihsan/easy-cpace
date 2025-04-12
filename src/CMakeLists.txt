@@ -35,6 +35,7 @@ target_include_directories(cpace_common PUBLIC
 # --- Core Protocol Logic ---
 add_library(cpace_protocol_logic OBJECT
     cpace_core/cpace_core.c
+    cpace_core/cpace_core.h
 )
 target_include_directories(cpace_protocol_logic PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # See crypto_iface, common

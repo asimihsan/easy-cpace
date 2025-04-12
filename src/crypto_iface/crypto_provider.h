@@ -67,7 +67,7 @@ typedef struct {
 
 // --- Crypto Provider Structure ---
 // Holds pointers to the implementations of the interfaces.
-typedef struct {
+typedef struct crypto_provider_st {
     const crypto_hash_iface_t *hash_iface;
     const crypto_ecc_iface_t *ecc_iface;
     const crypto_misc_iface_t *misc_iface;

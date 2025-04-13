@@ -1,6 +1,7 @@
 #include "../../include/easy_cpace.h"
 #include "../cpace_core/cpace_core.h" // Internal core logic header
-#include <stdlib.h>                   // For NULL, free
+#include <stdio.h>
+#include <stdlib.h> // For NULL, free
 
 // --- Helper for checking provider validity ---
 static int is_valid_provider(const crypto_provider_t *provider)
@@ -65,6 +66,8 @@ cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t
         // Cannot set ctx state to error if ctx is NULL
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
+    // printf("DEBUG: cpace_initiator_start: ctx=%p, state_flags=0x%02X (Expected 0x%02X)\n", (void *)ctx,
+    //        ctx ? ctx->state_flags : -1, CPACE_STATE_INITIALIZED);
     // Check role and state
     if (ctx->role != CPACE_ROLE_INITIATOR) {
         ctx->state_flags = CPACE_STATE_ERROR; // Mark context as unusable

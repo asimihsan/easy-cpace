@@ -123,34 +123,61 @@ void test_basic_initiator_responder_exchange_ok(void)
 
 void test_invalid_state_transitions(void)
 {
-    cpace_ctx_t *ctx_i = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx_i);
+    cpace_ctx_t *ctx = NULL;
     uint8_t dummy_msg[CPACE_PUBLIC_BYTES] = {0};
     uint8_t dummy_isk[CPACE_ISK_BYTES];
+    cpace_error_t err;
 
-    // Try finish before start
-    cpace_error_t err = cpace_initiator_finish(ctx_i, dummy_msg, dummy_isk);
+    // --- Scenario 1: Initiator finish before start ---
+    printf("  Testing: Initiator finish before start\n");
+    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_NOT_NULL(ctx);
+    err = cpace_initiator_finish(ctx, dummy_msg, dummy_isk);
     TEST_ASSERT_EQUAL_INT(CPACE_ERROR_INVALID_STATE, err);
+    // Optional: Check if state is now ERROR (might need internal access or a helper)
+    // TEST_ASSERT_TRUE((ctx->state_flags & CPACE_STATE_ERROR) != 0); // Requires direct struct access - not ideal for
+    // API test
+    cpace_ctx_free(ctx);
+    ctx = NULL;
 
-    // Start successfully
-    err = cpace_initiator_start(ctx_i, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
+    // --- Scenario 2: Initiator start twice ---
+    printf("  Testing: Initiator start twice\n");
+    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_NOT_NULL(ctx);
+    // First start should succeed
+    err = cpace_initiator_start(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
                                 TEST_AD_LEN, dummy_msg);
-    TEST_ASSERT_EQUAL_INT(CPACE_OK, err);
-
-    // Try start again
-    err = cpace_initiator_start(ctx_i, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "First initiator start failed unexpectedly");
+    // Second start should fail (state is now I_STARTED, not INITIALIZED)
+    err = cpace_initiator_start(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
                                 TEST_AD_LEN, dummy_msg);
-    TEST_ASSERT_EQUAL_INT(CPACE_ERROR_INVALID_STATE, err);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Second initiator start should fail");
+    cpace_ctx_free(ctx);
+    ctx = NULL;
 
-    cpace_ctx_free(ctx_i);
-
-    // Similar checks for responder...
-    cpace_ctx_t *ctx_r = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx_r);
+    // --- Scenario 3: Responder calls initiator function ---
+    printf("  Testing: Responder calls initiator finish\n");
+    ctx = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
+    TEST_ASSERT_NOT_NULL(ctx);
     // Try finish (should fail role check)
-    err = cpace_initiator_finish(ctx_r, dummy_msg, dummy_isk);
-    TEST_ASSERT_EQUAL_INT(CPACE_ERROR_INVALID_STATE, err);
-    cpace_ctx_free(ctx_r);
+    err = cpace_initiator_finish(ctx, dummy_msg, dummy_isk);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Responder calling initiator_finish should fail");
+    cpace_ctx_free(ctx);
+    ctx = NULL;
+
+    // --- Scenario 4: Initiator calls responder function ---
+    printf("  Testing: Initiator calls responder respond\n");
+    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_NOT_NULL(ctx);
+    uint8_t dummy_msg2[CPACE_PUBLIC_BYTES];
+    // Try respond (should fail role check)
+    err = cpace_responder_respond(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
+                                  TEST_AD_LEN, dummy_msg, dummy_msg2, dummy_isk);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Initiator calling responder_respond should fail");
+    cpace_ctx_free(ctx);
+    ctx = NULL;
+
+    // Add more scenarios as needed...
 }
 
 // --- Test Suite Runner ---

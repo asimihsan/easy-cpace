@@ -1,6 +1,5 @@
 #include "../include/easy_cpace.h"
 #include "unity.h"
-#include "unity_test_helpers.h"
 
 // Import test function declarations - these should exist in test_cpace_vectors.c
 extern void test_rfc_vectors(void); // Assuming this exists

@@ -1,6 +1,5 @@
 #include "../include/easy_cpace.h"
 #include "unity.h"
-#include "unity_test_helpers.h"
 
 // Import test function declarations
 extern void test_context_new_free(void);

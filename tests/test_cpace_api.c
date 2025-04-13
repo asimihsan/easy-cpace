@@ -1,7 +1,6 @@
 #include "../include/easy_cpace.h"
 #include "unity.h"           // Use include path for Unity headers
 #include "unity_internals.h" // Use include path for Unity headers
-#include <stdio.h>           // For printf in tests (optional)
 #include <string.h>          // For memcmp
 
 // Test Inputs (use fixed values for deterministic tests)

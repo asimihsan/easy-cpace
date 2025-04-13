@@ -47,29 +47,29 @@ void test_vector_generator_string_construction(void)
 
     // Compare length and content against the generated RFC test vector B.1.1
 #ifdef CPACE_DEBUG_LOG
-    printf("DEBUG_TEST: Comparing lengths: Expected (RFC_B1_GENERATOR_STRING_LEN) = %zu, Actual (actual_gen_input_len) = %zu\n",
-           RFC_B1_GENERATOR_STRING_LEN, actual_gen_input_len);
+    printf("DEBUG_TEST: Comparing lengths: Expected (RFC_B1_GENERATOR_INPUT_STRING_LEN) = %zu, Actual (actual_gen_input_len) = %zu\n",
+           RFC_B1_GENERATOR_INPUT_STRING_LEN, actual_gen_input_len);
 #endif // CPACE_DEBUG_LOG
-    TEST_ASSERT_EQUAL_UINT64_MESSAGE((uint64_t)RFC_B1_GENERATOR_STRING_LEN, (uint64_t)actual_gen_input_len, "Generator string length mismatch");
+    TEST_ASSERT_EQUAL_UINT64_MESSAGE((uint64_t)RFC_B1_GENERATOR_INPUT_STRING_LEN, (uint64_t)actual_gen_input_len, "Generator string length mismatch");
 
-    if (RFC_B1_GENERATOR_STRING_LEN == actual_gen_input_len) {
+    if (RFC_B1_GENERATOR_INPUT_STRING_LEN == actual_gen_input_len) {
 #ifdef CPACE_DEBUG_LOG
-        int memcmp_result = memcmp(RFC_B1_GENERATOR_STRING, actual_gen_input, RFC_B1_GENERATOR_STRING_LEN);
+        int memcmp_result = memcmp(RFC_B1_GENERATOR_INPUT_STRING, actual_gen_input, RFC_B1_GENERATOR_INPUT_STRING_LEN);
         printf("DEBUG_TEST: Manual memcmp result before assert = %d\n", memcmp_result);
         if (memcmp_result != 0) {
-             cpace_debug_print_hex("Expected (Generated)", RFC_B1_GENERATOR_STRING, RFC_B1_GENERATOR_STRING_LEN);
+             cpace_debug_print_hex("Expected (Generated)", RFC_B1_GENERATOR_INPUT_STRING, RFC_B1_GENERATOR_INPUT_STRING_LEN);
              cpace_debug_print_hex("Actual (Constructed)", actual_gen_input, actual_gen_input_len);
         }
 #endif // CPACE_DEBUG_LOG
-        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_GENERATOR_STRING,
+        TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_GENERATOR_INPUT_STRING,
                                          actual_gen_input,
-                                         RFC_B1_GENERATOR_STRING_LEN,
+                                         RFC_B1_GENERATOR_INPUT_STRING_LEN,
                                          "Generator string content mismatch");
     } else {
 #ifdef CPACE_DEBUG_LOG
         printf("ERROR: Lengths mismatch but entering else block? Expected=%zu, Actual=%zu\n",
-               RFC_B1_GENERATOR_STRING_LEN, actual_gen_input_len);
-        cpace_debug_print_hex("Expected Generator String (in else)", RFC_B1_GENERATOR_STRING, RFC_B1_GENERATOR_STRING_LEN);
+               RFC_B1_GENERATOR_INPUT_STRING_LEN, actual_gen_input_len);
+        cpace_debug_print_hex("Expected Generator String (in else)", RFC_B1_GENERATOR_INPUT_STRING, RFC_B1_GENERATOR_INPUT_STRING_LEN);
         cpace_debug_print_hex("Actual Generator String (in else)", actual_gen_input, actual_gen_input_len);
 #endif // CPACE_DEBUG_LOG
     }
@@ -95,9 +95,9 @@ void test_vector_generator_mapping(void)
                                                                 actual_gen_input,
                                                                 sizeof(actual_gen_input));
     // Basic check that construction succeeded and matches expected length
-    TEST_ASSERT_EQUAL_UINT(RFC_B1_GENERATOR_STRING_LEN, actual_gen_input_len);
+    TEST_ASSERT_EQUAL_UINT(RFC_B1_GENERATOR_INPUT_STRING_LEN, actual_gen_input_len);
 
-    // 2. Hash the *constructed* input string (which should match RFC_B1_GENERATOR_STRING)
+    // 2. Hash the *constructed* input string (which should match RFC_B1_GENERATOR_INPUT_STRING)
     TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "vector_test_provider is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface, "vector_test_provider->hash_iface is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface->hash_digest,
@@ -112,10 +112,10 @@ void test_vector_generator_mapping(void)
     TEST_ASSERT_EQUAL_INT_MESSAGE(CRYPTO_OK, hash_ok, "Hashing the constructed generator string failed");
 
     // 3. Compare the resulting hash with the expected hash from the generated vectors
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_GENERATOR_HASH, actual_hash, RFC_B1_GENERATOR_HASH_LEN, "Generator hash mismatch");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_HASH_GENERATOR_STRING, actual_hash, RFC_B1_HASH_GENERATOR_STRING_LEN, "Generator hash mismatch");
 #ifdef CPACE_DEBUG_LOG
-    if (memcmp(RFC_B1_GENERATOR_HASH, actual_hash, RFC_B1_GENERATOR_HASH_LEN) != 0) {
-        cpace_debug_print_hex("Expected Generator Hash", RFC_B1_GENERATOR_HASH, RFC_B1_GENERATOR_HASH_LEN);
+    if (memcmp(RFC_B1_HASH_GENERATOR_STRING, actual_hash, RFC_B1_HASH_GENERATOR_STRING_LEN) != 0) {
+        cpace_debug_print_hex("Expected Generator Hash", RFC_B1_HASH_GENERATOR_STRING, RFC_B1_HASH_GENERATOR_STRING_LEN);
         cpace_debug_print_hex("Actual Generator Hash", actual_hash, sizeof(actual_hash)); // actual_hash is fixed size
     }
 #endif // CPACE_DEBUG_LOG
@@ -128,7 +128,7 @@ void test_vector_generator_mapping(void)
     TEST_ASSERT_EQUAL_INT_MESSAGE(CRYPTO_OK, map_ok, "map_to_curve failed");
 
     // Compare with the expected generator point 'g' from the generated vectors
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_G, actual_g, RFC_B1_G_LEN, "Generator point 'g' mismatch");
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(RFC_B1_GENERATOR_G, actual_g, RFC_B1_GENERATOR_G_LEN, "Generator point 'g' mismatch");
 }
 
 // Test B.1.5 - ISK Input String Construction (using the *modified* utility directly)

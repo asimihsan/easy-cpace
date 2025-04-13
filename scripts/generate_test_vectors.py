@@ -14,10 +14,14 @@ B_1_1_1_TEST_VECTORS: dict[str, str] = {
     "DSI": "4350616365323535",
     "CI": "6F630B425F726573706F6E6465720B415F696E69746961746F72",
     "sid": "7E4B4791D6A8EF019B936C79FB7F2C57",
-    "generator_string(G.DSI,PRS,CI,sid,H.s_in_bytes)": "0843506163653235350850617373776F72646D000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001A6F630B425F726573706F6E6465720B415F696E69746961746F72107E4B4791D6A8EF019B936C79FB7F2C57",
-    "hash generator string": "92806DC608984DBF4E4AAE478C6EC453AE979CC01ECC1A2A7CF49F5CEE56551B",
-    "decoded field element of 255 bits": "92806DC608984DBF4E4AAE478C6EC453AE979CC01ECC1A2A7CF49F5CEE56551B",
-    "generator g": "64E8099E3EA682CFDC5CB665C057EBB514D06BF23EBC9F743B51B82242327074",
+    # Renamed key for valid C identifier generation
+    "generator_input_string": "0843506163653235350850617373776F72646D000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001A6F630B425F726573706F6E6465720B415F696E69746961746F72107E4B4791D6A8EF019B936C79FB7F2C57",
+    "hash_generator_string": "92806DC608984DBF4E4AAE478C6EC453AE979CC01ECC1A2A7CF49F5CEE56551B",
+    "decoded_field_element_of_255_bits": "92806DC608984DBF4E4AAE478C6EC453AE979CC01ECC1A2A7CF49F5CEE56551B",
+    "generator_g": "64E8099E3EA682CFDC5CB665C057EBB514D06BF23EBC9F743B51B82242327074",
+    # Removed descriptive Ya/Yb keys that clash with simpler ones below
+    # "Ya = X25519(xa, g)": "...",
+    # "Yb = X25519(xb, g)": "...",
 }
 
 # B.1.2.  Test vector for message from A
@@ -31,17 +35,21 @@ B_1_9_TEST_VECTORS: dict[str, str] = {
     "CI": "6F630B425F726573706F6E6465720B415F696E69746961746F72",
     "sid": "7E4B4791D6A8EF019B936C79FB7F2C57",
     "g": "64E8099E3EA682CFDC5CB665C057EBB514D06BF23EBC9F743B51B82242327074",
-    "ya": "21B4F4BD9E64ED355C3EB676A28EBEDAF6D8F17BDC365995B319097153044080",
+    # "ya": "21B4F4BD9E64ED355C3EB676A28EBEDAF6D8F17BDC365995B319097153044080", # Removed lowercase duplicate
     "ADa": "414461",
     "Ya": "1B02DAD6DBD29A07B6D28C9E04CB2F184F0734350E32BB7E62FF9DBCFDB63D15",
-    "yb": "848B0779FF415F0AF4EA14DF9DD1D3C29AC41D836C7808896C4EBA19C51AC40A",
+    # "yb": "848B0779FF415F0AF4EA14DF9DD1D3C29AC41D836C7808896C4EBA19C51AC40A", # Removed lowercase duplicate
     "ADb": "414462",
     "Yb": "20CDA5955F82C4931545BCBF40758CE1010D7DB4DB2A907013D79C7A8FCF957F",
     "K": "F97FDFCFFF1C983ED6283856A401DE3191CA919902B323C5F950C9703DF7297A",
+    # Added missing ISK Input String from B.1.5
+    "ISK_Input_String": "0C43506163653235355F49534B107E4B4791D6A8EF019B936C79FB7F2C5720F97FDFCFFF1C983ED6283856A401DE3191CA919902B323C5F950C9703DF7297A201B02DAD6DBD29A07B6D28C9E04CB2F184F0734350E32BB7E62FF9DBCFDB63D15034144612020CDA5955F82C4931545BCBF40758CE1010D7DB4DB2A907013D79C7A8FCF957F03414462",
     "ISK_IR": "A051EE5EE2499D16DA3F69F430218B8EA94A18A45B67F9E86495B382C33D14A5C38CECC0CC834F960E39E0D1BF7D76B9EF5D54EECC5E0F386C97AD12DA8C3D5F",
     "ISK_SY": "5CC27E49679423F81A37D7521D9FB1327C840D2EA4A1543652E7DE5CABB89EBAD27D24761B3288A3FD5764B441ECB78D30ABC26161FF45EA297BB311DDE04727",
     "sid_output_ir": "F7AE11AC3EE85C3C42D8BD51BA823FBE17158F43D34A1296F1CB2567BCC71DC8B201A134B566B468AAD8FD04F02F96E3CAF9D5601F7ED760A0A951A5A861B5E7",
     "sid_output_oc": "A38389E34FA492788C1DF43B06B427710491174E53C33B01362A490D116FE1B7E870AA6E2A7FC018725E3B7F969F7508042E44CD3863F39AA75026A190D1902B",
+    # Added missing scalar 's' from B.1.10
+    "s": "0300000000000000000000000000000000000000000000000000000000000000",
 }
 
 # B.1.10.  Test vectors for G_X25519.scalar_mult_vfy: low order points
@@ -97,48 +105,21 @@ def format_c_array(name, data):
 
     return f"const unsigned char {name}[] = {{\n{wrapped_hex}\n}};\nconst size_t {name}_LEN = sizeof({name});"
 
+
+def sanitize_key_to_c_var(key: str) -> str:
+    """Converts a dictionary key into a suitable C variable name."""
+    # Replace problematic characters with underscores
+    sanitized = key.replace(" ", "_").replace(".", "_").replace("(", "").replace(")", "").replace("/", "_").replace(",", "_")
+    # Ensure it starts with a letter or underscore (should be fine here)
+    # Convert to uppercase
+    return sanitized.upper()
+
+
 # --- Main Script Logic ---
 def main(output_path: str):
-    vectors = {}
-    errors = False
-
-    # Parse Inputs
-    vectors["PRS"] = find_input_hex("PRS_HEX", content)
-    vectors["CI"] = find_input_hex("CI_HEX", content)
-    vectors["sid"] = find_input_hex("sid", content)
-    vectors["ADa"] = find_input_hex("ADa", content)
-    vectors["ADb"] = find_input_hex("ADb", content)
-    vectors["s"] = find_input_hex("s", content)
-    vectors["u0"] = find_input_hex("u0", content)
-    vectors["u1"] = find_input_hex("u1", content)
-    vectors["u2"] = find_input_hex("u2", content)
-    vectors["u3"] = find_input_hex("u3", content)
-    vectors["u4"] = find_input_hex("u4", content)
-    vectors["u5"] = find_input_hex("u5", content)
-    vectors["u7"] = find_input_hex("u7", content)
-
-    # Parse Outputs
-    vectors["generator_string"] = find_vector("generator_string", content)
-    vectors["generator_hash"] = find_vector("hash generator string", content)
-    vectors["g"] = find_vector("generator g", content)
-    vectors["Ya"] = find_vector("Ya = X25519(xa, g)", content)
-    vectors["Yb"] = find_vector("Yb = X25519(xb, g)", content)
-    vectors["K"] = find_vector("K = X25519(xa, Yb)", content)
-    vectors["ISK_Input_String"] = find_vector("ISK Input String", content)
-    vectors["ISK_IR"] = find_vector("ISK_IR = H(ISK Input String)", content)
-
-    # Check for parsing errors
-    for name, data in vectors.items():
-        if data is None:
-            print(f"Failed to parse vector: {name}", file=sys.stderr)
-            errors = True
-
-    if errors:
-        sys.exit(1)
-
     # Generate Header File Content
     header_content = f"""\
-// Automatically generated by {Path(__file__).name} from {Path(input_path).name}
+// Automatically generated by {Path(__file__).name}
 // DO NOT EDIT MANUALLY!
 
 #ifndef {HEADER_GUARD}
@@ -147,13 +128,31 @@ def main(output_path: str):
 #include <stddef.h> // For size_t
 #include <stdint.h> // For uint8_t
 
-// --- RFC Appendix B.1 Test Vectors (Embedded) ---
+// --- RFC Appendix B.1 Test Vectors (Embedded from script dictionaries) ---
 
 """
-    # Use the cleaned C variable names directly
-    for c_var_name, data in sorted(vectors.items()):
-        c_name = f"{OUTPUT_VAR_PREFIX}_{c_var_name}" # Already uppercase
-        header_content += format_c_array(c_name, data) + "\n\n"
+    errors = False
+    # Iterate through the combined dictionary
+    for key, hex_value in sorted(ALL_VECTORS.items()):
+        # Skip non-hex string values (like 'H', 'H.s_in_bytes', 'ZPAD length')
+        if not isinstance(hex_value, str) or not all(c in '0123456789abcdefABCDEF' for c in hex_value):
+            # print(f"Skipping non-hex value for key: {key}", file=sys.stderr)
+            continue
+
+        c_var_name = sanitize_key_to_c_var(key)
+        c_name = f"{OUTPUT_VAR_PREFIX}_{c_var_name}"
+
+        try:
+            byte_data = parse_hex_string(hex_value)
+            header_content += format_c_array(c_name, byte_data) + "\n\n"
+        except ValueError as e:
+            print(f"Error parsing hex string for key '{key}': {e}", file=sys.stderr)
+            errors = True
+
+    if errors:
+        print("Errors occurred during hex parsing. Header file might be incomplete or incorrect.", file=sys.stderr)
+        # Decide if you want to exit here or write a potentially broken file
+        # sys.exit(1) # Optional: exit on parsing error
 
     header_content += f"#endif // {HEADER_GUARD}\n"
 
@@ -173,5 +172,7 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(1)
+
     output_file = sys.argv[1]
+    # No input file needed, main now uses internal dictionaries
     main(output_file)

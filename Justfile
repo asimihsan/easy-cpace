@@ -34,8 +34,11 @@ lint-fix:
     # Include paths for Unity are needed for clang-tidy
     UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
     UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
-    # Monocypher include path is handled via CMake target_include_directories
-    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE}
+    # Also explicitly include Monocypher headers
+    MONOCYPHER_INCLUDE="${PWD}/build/_deps/monocypher-src/src"
+    MONOCYPHER_OPTIONAL_INCLUDE="${PWD}/build/_deps/monocypher-src/src/optional"
+    # Run clang-tidy with all include paths
+    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE}
 
 lint:
     #!/usr/bin/env bash
@@ -59,8 +62,11 @@ lint:
     # Include paths for Unity are needed for clang-tidy
     UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
     UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
-    # Monocypher include path is handled via CMake target_include_directories
-    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} 2>&1) || \
+    # Also explicitly include Monocypher headers
+    MONOCYPHER_INCLUDE="${PWD}/build/_deps/monocypher-src/src"
+    MONOCYPHER_OPTIONAL_INCLUDE="${PWD}/build/_deps/monocypher-src/src/optional"
+    # Run clang-tidy with all include paths
+    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} 2>&1) || \
     (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
 
 # Format a specific file

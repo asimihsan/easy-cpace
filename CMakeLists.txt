@@ -45,15 +45,16 @@ add_library(monocypher_lib STATIC
     ${monocypher_SOURCE_DIR}/src/monocypher.c
     ${monocypher_SOURCE_DIR}/src/monocypher.h
 )
-# Ensure consumers of monocypher_lib can find the header within the build tree
+# Ensure consumers of monocypher_lib can find the headers within the build tree
 target_include_directories(monocypher_lib PUBLIC
     $<BUILD_INTERFACE:${monocypher_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${monocypher_SOURCE_DIR}/src/optional>
 )
-# Optional: Add Ed25519 support if needed by a potential backend
-# target_sources(monocypher_lib PRIVATE
-#     ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c
-#     ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.h
-# )
+# Add Ed25519 support needed by the Monocypher backend for SHA512
+target_sources(monocypher_lib PRIVATE
+    ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c
+    ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.h
+)
 
 
 # --- Add Source Directory ---

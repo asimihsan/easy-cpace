@@ -132,10 +132,11 @@ static int monocypher_random_bytes(uint8_t *buf, size_t len)
 // interface is not strictly necessary based on current core logic usage.
 // We provide hash_digest and leave the incremental ones as NULL or stubs.
 
-typedef struct crypto_hash_ctx_st {
+// Implement opaque context structure from crypto_provider.h
+struct crypto_hash_ctx_st {
     // Not used by this backend as we only implement hash_digest
     uint8_t dummy;
-} crypto_hash_ctx_t;
+};
 
 static crypto_hash_ctx_t *monocypher_hash_new(void)
 {
@@ -181,8 +182,7 @@ static int monocypher_hash_digest(const uint8_t *data, size_t len, uint8_t *out,
         // Use Monocypher's SHA512 (requires monocypher-ed25519.c)
         crypto_sha512(out, data, len);
         return 1;                                          // OK
-    } else if (out_len == CPACE_CRYPTO_FIELD_SIZE_BYTES) { // 32 bytes for map-to-curve ->
-        BLAKE2b
+    } else if (out_len == CPACE_CRYPTO_FIELD_SIZE_BYTES) { // 32 bytes for map-to-curve -> BLAKE2b
             // Use Monocypher's BLAKE2b
             crypto_blake2b(out, out_len, data, len);
         return 1; // OK

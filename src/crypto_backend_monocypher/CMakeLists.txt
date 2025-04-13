@@ -11,10 +11,8 @@ target_include_directories(cpace_backend_monocypher PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
         # Allow backend to see the public API header
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-        # Allow backend to see the Monocypher headers (via the interface target)
-        # The monocypher_lib target should propagate its include directory.
-        # If not, uncomment the line below after checking the monocypher target definition.
-        # $<TARGET_PROPERTY:monocypher_lib,INTERFACE_INCLUDE_DIRECTORIES>
+        # Explicitly add Monocypher include directories needed by the backend source
+        $<TARGET_PROPERTY:monocypher_lib,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # Link the backend object library against Monocypher

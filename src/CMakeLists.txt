@@ -48,7 +48,8 @@ target_include_directories(cpace_protocol_logic PUBLIC
 # --- API Implementation ---
 add_library(cpace_api_impl OBJECT
     cpace_api/cpace_api.c
-        crypto_backend_monocypher/monocypher_backend.c
+    # The backend source is compiled in its own object library target
+    # crypto_backend_monocypher/monocypher_backend.c # REMOVED
 )
 target_include_directories(cpace_api_impl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # See cpace_core, crypto_iface

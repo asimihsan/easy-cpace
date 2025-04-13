@@ -45,9 +45,9 @@ add_library(monocypher_lib STATIC
     ${monocypher_SOURCE_DIR}/src/monocypher.c
     ${monocypher_SOURCE_DIR}/src/monocypher.h
 )
-# Ensure consumers of monocypher_lib can find the header
+# Ensure consumers of monocypher_lib can find the header within the build tree
 target_include_directories(monocypher_lib PUBLIC
-    ${monocypher_SOURCE_DIR}/src
+    $<BUILD_INTERFACE:${monocypher_SOURCE_DIR}/src>
 )
 # Optional: Add Ed25519 support if needed by a potential backend
 # target_sources(monocypher_lib PRIVATE

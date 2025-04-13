@@ -92,3 +92,6 @@ CMakeUserPresets.json
 .jj
 build/
 tests/generated_rfc_vectors.h
+vendor
+
+**/.DS_Store

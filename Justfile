@@ -2,6 +2,9 @@ build:
     mise x -- cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON --debug-output -S . -B build -G Ninja
     mise x -- cmake --build build
 
+test:
+    cd build && mise x -- ctest -V
+
 lint-fix:
     #!/usr/bin/env bash
 

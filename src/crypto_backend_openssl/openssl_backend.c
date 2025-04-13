@@ -94,7 +94,7 @@ static int openssl_hash_digest(const uint8_t *data, size_t len, uint8_t *out, si
 
     ctx = EVP_MD_CTX_new();
     if (!ctx) {
-        return CRYPTO_ERROR;
+        return CRYPTO_ERROR; // Cannot cleanup if ctx is NULL
     }
 
     if (EVP_DigestInit_ex(ctx, EVP_sha512(), NULL) != 1) {
@@ -115,7 +115,9 @@ static int openssl_hash_digest(const uint8_t *data, size_t len, uint8_t *out, si
     ret = CRYPTO_OK;
 
 cleanup:
-    EVP_MD_CTX_free(ctx);
+    if (ctx) {
+        EVP_MD_CTX_free(ctx);
+    }
     OPENSSL_cleanse(full_hash, sizeof(full_hash));
     return ret;
 }

@@ -9,6 +9,8 @@ extern void run_vector_tests(void);
 // Add declarations for other test suites here later
 
 // --- Main Test Runner ---
+#include <stdio.h> // Ensure printf/fflush are available
+
 int main(void)
 {
     int failures = 0;

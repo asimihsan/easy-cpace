@@ -1,5 +1,6 @@
 #include "../include/easy_cpace.h"
-#include "vendor/unity/src/unity.h"
+#include "unity.h"          // Use include path for Unity headers
+#include "unity_internals.h" // Use include path for Unity headers
 #include <stdio.h>  // For printf in tests (optional)
 #include <string.h> // For memcmp
 
@@ -17,9 +18,9 @@ static const size_t TEST_AD_LEN = sizeof(TEST_AD);
 // Test Provider (Using OpenSSL for now)
 const crypto_provider_t *test_provider = NULL;
 
-// --- Test Setup and Teardown ---
+// --- Test Setup and Teardown (API specific) ---
 
-void setUp(void)
+void setUp_api(void)
 {
     // Runs before each test function in this file
     test_provider = cpace_get_provider_openssl();
@@ -27,7 +28,7 @@ void setUp(void)
     // Note: easy_cpace_openssl_init() is called once in test_runner.c main()
 }
 
-void tearDown(void)
+void tearDown_api(void)
 {
     // Runs after each test function in this file
     test_provider = NULL;
@@ -35,6 +36,7 @@ void tearDown(void)
 }
 
 // --- Test Cases ---
+// stdio.h and string.h included at the top
 
 void test_context_new_free(void)
 {
@@ -49,6 +51,7 @@ void test_context_new_free(void)
     cpace_ctx_free(NULL); // Should be safe
 }
 
+
 void test_context_new_invalid_args(void)
 {
     // Invalid role
@@ -59,6 +62,7 @@ void test_context_new_invalid_args(void)
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, NULL);
     TEST_ASSERT_NULL_MESSAGE(ctx, "Context creation should fail with NULL provider");
 }
+
 
 void test_basic_initiator_responder_exchange_ok(void)
 {
@@ -77,7 +81,6 @@ void test_basic_initiator_responder_exchange_ok(void)
     TEST_ASSERT_NOT_NULL(ctx_r);
 
     // 2. Initiator Start
-    printf("  Initiator: Starting...\n");
     err = cpace_initiator_start(ctx_i,
                                 TEST_PRS,
                                 TEST_PRS_LEN,
@@ -100,7 +103,6 @@ void test_basic_initiator_responder_exchange_ok(void)
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Initiator msg1 should not be all zeros");
 
     // 3. Responder Respond
-    printf("  Responder: Responding...\n");
     err = cpace_responder_respond(ctx_r,
                                   TEST_PRS,
                                   TEST_PRS_LEN,
@@ -125,18 +127,17 @@ void test_basic_initiator_responder_exchange_ok(void)
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Responder msg2 should not be all zeros");
 
     // 4. Initiator Finish
-    printf("  Initiator: Finishing...\n");
     err = cpace_initiator_finish(ctx_i, msg2, isk_i);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator finish failed");
 
     // 5. Verify ISKs match
-    printf("  Verifying ISKs...\n");
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(isk_r, isk_i, CPACE_ISK_BYTES, "ISKs do not match!");
 
     // 6. Cleanup
     cpace_ctx_free(ctx_i);
     cpace_ctx_free(ctx_r);
 }
+
 
 void test_invalid_state_transitions(void)
 {
@@ -146,7 +147,6 @@ void test_invalid_state_transitions(void)
     cpace_error_t err;
 
     // --- Scenario 1: Initiator finish before start ---
-    printf("  Testing: Initiator finish before start\n");
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_NOT_NULL(ctx);
     err = cpace_initiator_finish(ctx, dummy_msg, dummy_isk);
@@ -158,7 +158,6 @@ void test_invalid_state_transitions(void)
     ctx = NULL;
 
     // --- Scenario 2: Initiator start twice ---
-    printf("  Testing: Initiator start twice\n");
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_NOT_NULL(ctx);
     // First start should succeed
@@ -189,7 +188,6 @@ void test_invalid_state_transitions(void)
     ctx = NULL;
 
     // --- Scenario 3: Responder calls initiator function ---
-    printf("  Testing: Responder calls initiator finish\n");
     ctx = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
     TEST_ASSERT_NOT_NULL(ctx);
     // Try finish (should fail role check)
@@ -199,7 +197,6 @@ void test_invalid_state_transitions(void)
     ctx = NULL;
 
     // --- Scenario 4: Initiator calls responder function ---
-    printf("  Testing: Initiator calls responder respond\n");
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_NOT_NULL(ctx);
     uint8_t dummy_msg2[CPACE_PUBLIC_BYTES];
@@ -228,15 +225,13 @@ void test_invalid_state_transitions(void)
 void run_api_tests(void)
 {
     // Setup for the whole suite (if needed, beyond setUp/tearDown)
-    printf("Setting up API Test Suite...\n");
 
-    // Run individual tests
-    RUN_TEST(test_context_new_free);
-    RUN_TEST(test_context_new_invalid_args);
-    RUN_TEST(test_basic_initiator_responder_exchange_ok);
-    RUN_TEST(test_invalid_state_transitions);
-    // Add RUN_TEST calls for more tests here
+    // Run individual tests using the API-specific setup/teardown
+    UnityTestRunner(test_context_new_free, "test_context_new_free", __LINE__, setUp_api, tearDown_api);
+    UnityTestRunner(test_context_new_invalid_args, "test_context_new_invalid_args", __LINE__, setUp_api, tearDown_api);
+    UnityTestRunner(test_basic_initiator_responder_exchange_ok, "test_basic_initiator_responder_exchange_ok", __LINE__, setUp_api, tearDown_api);
+    UnityTestRunner(test_invalid_state_transitions, "test_invalid_state_transitions", __LINE__, setUp_api, tearDown_api);
+    // Add more tests here using UnityTestRunner with setUp_api/tearDown_api
 
     // Teardown for the whole suite (if needed)
-    printf("API Test Suite Finished.\n");
 }

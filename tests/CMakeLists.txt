@@ -28,9 +28,7 @@ target_include_directories(unity PUBLIC
 add_executable(cpace_test_runner
         test_runner.c       # Main test runner entry point
         test_cpace_api.c    # Test cases for the public API and flow
-        test_runner.c
-        test_cpace_api.c
-        test_cpace_vectors.c
+        test_cpace_vectors.c # Test cases for RFC vectors
 )
 
 # Link the test runner against our library and Unity
@@ -47,6 +45,9 @@ target_include_directories(cpace_test_runner PRIVATE
         # ${CMAKE_SOURCE_DIR}/include
         # Access to internal headers if needed (e.g., test helpers might need crypto_provider.h)
         # ${CMAKE_SOURCE_DIR}/src
+
+        # Explicitly add Unity includes here in case propagation fails
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src
 )
 
 

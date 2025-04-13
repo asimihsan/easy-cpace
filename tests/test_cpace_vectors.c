@@ -97,20 +97,23 @@ const unsigned char tc_u7[] = {0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0
 const crypto_provider_t *vector_test_provider = NULL;
 
 // --- Setup/Teardown for Vector Tests ---
-void setUp_vector(void)
+// Renamed to match Unity convention
+void setUp(void)
 {
     vector_test_provider = cpace_get_provider_openssl();
-    TEST_ASSERT_NOT_NULL(vector_test_provider);
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "Failed to get OpenSSL provider in vector setUp");
     // Init called in runner main
 }
 
-void tearDown_vector(void)
+// Renamed to match Unity convention
+void tearDown(void)
 {
     vector_test_provider = NULL;
     // Cleanup called in runner main
 }
 
 // --- Test Cases ---
+// stdio.h and string.h included at the top
 
 // Test B.1.1 - Generator String Construction (using the utility directly)
 void test_vector_generator_string_construction(void)
@@ -131,6 +134,7 @@ void test_vector_generator_string_construction(void)
     TEST_ASSERT_EQUAL_MEMORY(tc_generator_string, actual_gen_input, tc_generator_string_len);
 }
 
+
 // Test B.1.1 - Hashing Generator String and Mapping to Curve Point 'g'
 void test_vector_generator_mapping(void)
 {
@@ -138,6 +142,13 @@ void test_vector_generator_mapping(void)
     uint8_t actual_g[CPACE_CRYPTO_POINT_BYTES];
 
     // Hash the known correct generator string
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "vector_test_provider is NULL");
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface, "vector_test_provider->hash_iface is NULL");
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface->hash_digest, "vector_test_provider->hash_iface->hash_digest is NULL");
+
+    // Note: tc_generator_string and tc_generator_string_len seem incorrect based on spec/implementation.
+    // The length mismatch failure in test_vector_generator_string_construction confirms this.
+    // However, we proceed with the test vector values to debug the crash.
     int hash_ok = vector_test_provider->hash_iface->hash_digest(tc_generator_string,
                                                                 tc_generator_string_len,
                                                                 actual_hash,
@@ -153,6 +164,7 @@ void test_vector_generator_mapping(void)
     // Compare with the expected generator point 'g'
     TEST_ASSERT_EQUAL_MEMORY(tc_g, actual_g, sizeof(actual_g));
 }
+
 
 // Test B.1.5 - ISK Input String Construction (using the *modified* utility directly)
 void test_vector_isk_string_construction(void)
@@ -180,6 +192,7 @@ void test_vector_isk_string_construction(void)
     TEST_ASSERT_EQUAL_MEMORY(tc_isk_input_string, actual_isk_input, tc_isk_input_string_len);
 }
 
+
 // Test B.1.5 - Final ISK Calculation
 void test_vector_isk_calculation(void)
 {
@@ -195,6 +208,7 @@ void test_vector_isk_calculation(void)
     TEST_ASSERT_EQUAL_MEMORY(tc_ISK_IR, actual_isk, sizeof(actual_isk));
 }
 
+
 // Test B.1.10 - Low Order Points yielding identity K
 void test_vector_low_order_mult_identity(void)
 {
@@ -202,9 +216,7 @@ void test_vector_low_order_mult_identity(void)
     int num_tests = sizeof(low_order_us) / sizeof(low_order_us[0]);
     uint8_t result_point[CPACE_CRYPTO_POINT_BYTES];
 
-    printf("\n"); // Newline for better formatting
     for (int i = 0; i < num_tests; ++i) {
-        printf("  Testing low order u%d...\n", i == 6 ? 7 : i); // Adjust index for u7
         int mult_ret = vector_test_provider->ecc_iface->scalar_mult(result_point, tc_s, low_order_us[i]);
 
         // Expect the scalar_mult function to return the specific identity error code
@@ -215,9 +227,10 @@ void test_vector_low_order_mult_identity(void)
 // --- Test Suite Runner ---
 void run_vector_tests(void)
 {
-    UNITY_BEGIN(); // Start a nested Unity session for this suite
+    // UNITY_BEGIN(); // Removed: Rely on main runner's Unity context
 
-    // Unity automatically uses setUp_vector and tearDown_vector for tests in this file
+    // Unity should now automatically use the setUp and tearDown defined in this file
+    // for the tests run via RUN_TEST below.
 
     // Run tests
     RUN_TEST(test_vector_generator_string_construction);
@@ -226,5 +239,5 @@ void run_vector_tests(void)
     RUN_TEST(test_vector_isk_calculation);
     RUN_TEST(test_vector_low_order_mult_identity);
 
-    UNITY_END(); // End nested session
+    // UNITY_END(); // Removed: Rely on main runner's Unity context
 }

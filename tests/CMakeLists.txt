@@ -8,47 +8,44 @@ include(FetchContent)
 FetchContent_Declare(
   unity
   GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
-  GIT_TAG        v2.6.0  # Use a specific, stable version
+  GIT_TAG        v2.6.1
 )
 
 # Make Unity available - need to handle it manually as it doesn't have a CMakeLists.txt
 FetchContent_GetProperties(unity)
 if(NOT unity_POPULATED)
-  FetchContent_Populate(unity)
-  
-  # Create a library target for Unity
-  add_library(unity STATIC
-    ${unity_SOURCE_DIR}/src/unity.c
-  )
-  
-  target_include_directories(unity PUBLIC
-    ${unity_SOURCE_DIR}/src
-  )
+  FetchContent_MakeAvailable(unity)
+
+  # Create an interface library for Unity to make it easier to use
+  # This won't conflict with any targets Unity itself might create
+  add_library(unity_interface INTERFACE)
+  target_link_libraries(unity_interface INTERFACE unity)
+  target_include_directories(unity_interface INTERFACE ${unity_SOURCE_DIR}/src)
 endif()
 
 # Add helper function for defining tests
 function(add_unity_test TEST_NAME)
   # Parse arguments
   cmake_parse_arguments(TEST "" "SUITE" "SOURCES;LINK_LIBS" ${ARGN})
-  
+
   set(RUNNER_TARGET "test_${TEST_NAME}")
   set(TEST_LABEL "${TEST_SUITE}")
-  
+
   # Define the executable
   add_executable(${RUNNER_TARGET} ${TEST_SOURCES})
-  
+
   # Link common dependencies
   target_link_libraries(${RUNNER_TARGET} PRIVATE
-    unity
+    unity_interface
     ${TEST_LINK_LIBS}
   )
-  
+
   # Ensure include paths are set
   target_include_directories(${RUNNER_TARGET} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src     # For internal headers if needed
   )
-  
+
   # Register with CTest
   add_test(NAME ${TEST_NAME} COMMAND ${RUNNER_TARGET})
   set_property(TEST ${TEST_NAME} PROPERTY LABELS "${TEST_LABEL}")

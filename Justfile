@@ -23,7 +23,9 @@ lint-fix:
     mise x -- fd -e c -e h -E "build/" -E "third_party/" . -x clang-format -i {}
     # Get OpenSSL include path from helper script
     OPENSSL_INCLUDE="$(./scripts/find_openssl.sh)"
-    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE}
+    UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
+    UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
+    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE}
 
 lint:
     #!/usr/bin/env bash
@@ -46,7 +48,9 @@ lint:
 
     # Get OpenSSL include path from helper script
     OPENSSL_INCLUDE="$(./scripts/find_openssl.sh)"
-    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE} 2>&1) || \
+    UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
+    UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
+    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} 2>&1) || \
     (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
 
 # Format a specific file

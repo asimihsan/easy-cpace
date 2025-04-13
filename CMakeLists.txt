@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+cmake_policy(SET CMP0159 NEW)
+cmake_policy(SET CMP0126 NEW)
+cmake_policy(SET CMP0156 NEW)
+cmake_policy(SET CMP0082 NEW)
+
 project(EasyCPace LANGUAGES C VERSION 0.1.0)
 
 # --- Standard Project Setup ---

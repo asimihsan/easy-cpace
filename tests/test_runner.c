@@ -1,5 +1,5 @@
 #include "../include/easy_cpace.h" // Include to call init/cleanup
-#include "vendor/unity/src/unity.h"
+#include "unity.h"
 #include <stdio.h>
 
 // --- Declare Test Suites ---

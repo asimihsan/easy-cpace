@@ -179,17 +179,26 @@ static int monocypher_hash_digest(const uint8_t *data, size_t len, uint8_t *out,
 
     // Choose hash function based on required output length
     if (out_len == CPACE_ISK_BYTES) { // 64 bytes for ISK -> SHA512
-        // Use Monocypher's SHA512 (requires monocypher-ed25519.c)
+        // Use Monocypher's SHA512
         crypto_sha512(out, data, len);
-        return 1;                                          // OK
-    } else if (out_len == CPACE_CRYPTO_FIELD_SIZE_BYTES) { // 32 bytes for map-to-curve -> BLAKE2b
-            // Use Monocypher's BLAKE2b
-            crypto_blake2b(out, out_len, data, len);
-        return 1; // OK
+        return CRYPTO_OK;                                  // Use consistent return code
+    } else if (out_len == CPACE_CRYPTO_FIELD_SIZE_BYTES) { // 32 bytes for map-to-curve
+        // According to RFC PoC for X25519, we need the first 32 bytes of SHA512.
+        uint8_t full_sha512_hash[CPACE_CRYPTO_HASH_BYTES]; // 64 bytes buffer
+
+        crypto_sha512(full_sha512_hash, data, len);
+
+        // Copy the first 'out_len' (32) bytes to the output buffer
+        memcpy(out, full_sha512_hash, out_len);
+
+        // Cleanse the full hash buffer
+        crypto_wipe(full_sha512_hash,
+                    sizeof(full_sha512_hash)); // Or use provider->misc_iface->cleanse if available safely
+
+        return CRYPTO_OK; // Use consistent return code
     } else {
         // Unsupported output length for CPace needs
-        // Could use BLAKE2b with variable length, but stick to required sizes.
-        return 0; // Error: Unsupported output length
+        return CRYPTO_ERROR; // Use consistent return code
     }
 }
 

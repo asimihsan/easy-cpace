@@ -1,0 +1,88 @@
+# RFC draft-irtf-cfrg-cpace-13 Appendix B.1 Test Vectors
+
+# B.1.1. Inputs and Generator Calculation
+Inputs
+  H   = SHA-512 with input block size 128 bytes.
+  PRS = b'Password' ; ZPAD length: 109 ; DSI = b'CPace255'
+  PRS_HEX = 50617373776f7264
+  CI = b'oc\x0bB_responder\x0bA_initiator'
+  CI_HEX = 6f630b425f726573706f6e6465720b415f696e69746961746f72
+  sid = 7e4b4791d6a8ef019b936c79fb7f2c57
+Outputs
+  generator_string(G.DSI,PRS,CI,sid,H.s_in_bytes):
+  (length: 172 bytes)
+    0843506163653235350850617373776f72646d000000000000000000
+    00000000000000000000000000000000000000000000000000000000
+    00000000000000000000000000000000000000000000000000000000
+    00000000000000000000000000000000000000000000000000000000
+    000000000000000000000000000000001a6f630b425f726573706f6e
+    6465720b415f696e69746961746f72107e4b4791d6a8ef019b936c79
+    fb7f2c57
+  hash generator string: (length: 32 bytes)
+    92806dc608984dbf4e4aae478c6ec453ae979cc01ecc1a2a7cf49f5c
+    ee56551b
+  decoded field element of 255 bits: (length: 32 bytes)
+    92806dc608984dbf4e4aae478c6ec453ae979cc01ecc1a2a7cf49f5c
+    ee56551b
+  generator g: (length: 32 bytes)
+    64e8099e3ea682cfdc5cb665c057ebb514d06bf23ebc9f743b51b822
+    42327074
+
+# B.1.2. Initiator Message Generation
+Inputs
+  xa = 0101010101010101010101010101010101010101010101010101010101010101
+  ADa = 414461
+Outputs
+  Ya = X25519(xa, g): (length: 32 bytes)
+    1b02dad6dbd29a07b6d28c9e04cb2f184f0734350e32bb7e62ff9dbcfdb63d15
+
+# B.1.3. Responder Message Generation
+Inputs
+  xb = 0202020202020202020202020202020202020202020202020202020202020202
+  ADb = 414462
+Outputs
+  Yb = X25519(xb, g): (length: 32 bytes)
+    20cda5955f82c4931545bcbf40758ce1010d7db4db2a907013d79c7a8fcf957f
+
+# B.1.4. Shared Secret Calculation
+Inputs
+  xa, Yb (from above)
+  xb, Ya (from above)
+Outputs
+  K = X25519(xa, Yb) = X25519(xb, Ya): (length: 32 bytes)
+    f97fdfcfff1c983ed6283856a401de3191ca919902b323c5f950c9703df7297a
+
+# B.1.5. ISK Derivation
+Inputs
+  DSI_ISK = b'CPace255_ISK'
+  sid, K, Ya, ADa, Yb, ADb (from above)
+Outputs
+  ISK Input String: (length: 131 bytes)
+    0c43506163653235355f49534b107e4b4791d6a8ef019b936c79fb7f
+    2c5720f97fdfcfff1c983ed6283856a401de3191ca919902b323c5f9
+    50c9703df7297a201b02dad6dbd29a07b6d28c9e04cb2f184f073435
+    0e32bb7e62ff9dbcfdb63d15034144612020cda5955f82c4931545bc
+    bf40758ce1010d7db4db2a907013d79c7a8fcf957f03414462
+  ISK_IR = H(ISK Input String): (length: 64 bytes)
+    a051ee5ee2499d16da3f69f430218b8ea94a18a45b67f9e86495b382
+    c33d14a5c38cecc0cc834f960e39e0d1bf7d76b9ef5d54eecc5e0f38
+    6c97ad12da8c3d5f
+
+# B.1.10. Low-Order Points
+Inputs
+  s = af46e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449aff
+  u0 = 0000000000000000000000000000000000000000000000000000000000000000
+  u1 = 0100000000000000000000000000000000000000000000000000000000000000
+  u2 = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
+  u3 = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800
+  u4 = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157
+  u5 = edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
+  u7 = eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
+Outputs
+  X25519(s, u0) = Identity
+  X25519(s, u1) = Identity
+  X25519(s, u2) = Identity
+  X25519(s, u3) = Identity
+  X25519(s, u4) = Identity
+  X25519(s, u5) = Identity
+  X25519(s, u7) = Identity

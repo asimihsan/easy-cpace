@@ -1,3 +1,9 @@
+setup:
+    mise trust
+    mise install
+    mise x -- uv venv
+    mise x -- uv sync
+
 build:
     mise x -- cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON --debug-output -S . -B build -G Ninja
     mise x -- cmake --build build

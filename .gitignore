@@ -91,3 +91,4 @@ CMakeUserPresets.json
 .aider*
 .jj
 build/
+tests/generated_rfc_vectors.h

@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.27) # Match root CMake version
 
 cmake_policy(SET CMP0156 NEW)
 
+# --- Find Python for Generator Script ---
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+message(STATUS "Found Python3 interpreter: ${Python3_EXECUTABLE}")
+
 # --- Unity Test Framework using FetchContent ---
 include(FetchContent)
 
@@ -65,6 +69,24 @@ configure_file(
   @ONLY
 )
 
+# --- Generate RFC Vector Header ---
+set(RFC_VECTOR_TXT ${CMAKE_CURRENT_SOURCE_DIR}/rfc_b1_vectors.txt)
+set(GENERATED_VECTOR_HEADER ${CMAKE_CURRENT_BINARY_DIR}/generated_rfc_vectors.h)
+set(VECTOR_GENERATOR_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/generate_test_vectors.py)
+
+add_custom_command(
+  OUTPUT ${GENERATED_VECTOR_HEADER}
+  COMMAND ${Python3_EXECUTABLE} ${VECTOR_GENERATOR_SCRIPT} ${RFC_VECTOR_TXT} ${GENERATED_VECTOR_HEADER}
+  DEPENDS ${VECTOR_GENERATOR_SCRIPT} ${RFC_VECTOR_TXT}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} # Run script from project root
+  COMMENT "Generating C header from RFC test vectors..."
+  VERBATIM # Ensure commands are not quoted unnecessarily
+)
+
+# Custom target to drive the generation
+add_custom_target(generate_vector_header ALL DEPENDS ${GENERATED_VECTOR_HEADER})
+
+
 # --- Define API Tests ---
 add_unity_test(cpace_api
   SUITE "API"
@@ -90,7 +112,11 @@ add_unity_test(cpace_vectors
 )
 
 target_include_directories(test_cpace_vectors PRIVATE
-  ${CMAKE_CURRENT_BINARY_DIR}  # For generated unity_test_helpers.h
+  ${CMAKE_CURRENT_BINARY_DIR}  # For generated unity_test_helpers.h AND generated_rfc_vectors.h
 )
+
+# Ensure the header is generated before the test executable is built
+add_dependencies(test_cpace_vectors generate_vector_header)
+
 
 message(STATUS "Unity tests configured. Run with 'ctest' or 'just test'.")

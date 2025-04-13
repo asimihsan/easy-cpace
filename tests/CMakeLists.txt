@@ -88,6 +88,9 @@ add_custom_command(
 # Custom target to drive the generation
 add_custom_target(generate_vector_header ALL DEPENDS ${GENERATED_VECTOR_HEADER})
 
+# Explicitly mark the header as generated to help IDEs like CLion detect it
+set_source_files_properties(${GENERATED_VECTOR_HEADER} PROPERTIES GENERATED TRUE)
+
 
 # --- Define API Tests ---
 add_unity_test(cpace_api

@@ -48,28 +48,15 @@ target_include_directories(cpace_protocol_logic PUBLIC
 # --- API Implementation ---
 add_library(cpace_api_impl OBJECT
     cpace_api/cpace_api.c
+        crypto_backend_monocypher/monocypher_backend.c
 )
 target_include_directories(cpace_api_impl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # See cpace_core, crypto_iface
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> # See easy_cpace.h
 )
 
-
-# --- Include Backends Based on Options ---
-set(CPACE_BACKEND_OBJECTS "") # List of backend OBJECT library targets
-
-if(CPACE_USE_OPENSSL)
-    # find_package is now done above
-    add_subdirectory(crypto_backend_openssl)
-    list(APPEND CPACE_BACKEND_OBJECTS $<TARGET_OBJECTS:cpace_backend_openssl>)
-endif()
-
-if(CPACE_USE_MBEDTLS)
-    # find_package is now done above (or would be)
-    # IMPORTANT: Comment out add_subdirectory for now if focusing only on OpenSSL
-    add_subdirectory(crypto_backend_mbedtls)
-    list(APPEND CPACE_BACKEND_OBJECTS $<TARGET_OBJECTS:cpace_backend_mbedtls>)
-endif()
+# --- Include Monocypher Backend ---
+add_subdirectory(crypto_backend_monocypher)
 
 # --- Final Library Target ---
 # Create the final static library from all the object files.
@@ -77,19 +64,12 @@ add_library(easy_cpace_core STATIC
     $<TARGET_OBJECTS:cpace_api_impl>
     $<TARGET_OBJECTS:cpace_protocol_logic>
     $<TARGET_OBJECTS:cpace_common>
-    ${CPACE_BACKEND_OBJECTS} # Contains objects from enabled backends
+    $<TARGET_OBJECTS:cpace_backend_monocypher>
 )
 
-# Link external dependencies TO THE FINAL STATIC LIBRARY
-# The find_package calls above ensure the imported targets are available here.
-if(CPACE_USE_OPENSSL)
-    # Now OpenSSL::Crypto should be found because find_package ran in this scope
-    target_link_libraries(easy_cpace_core PUBLIC OpenSSL::Crypto)
-endif()
-if(CPACE_USE_MBEDTLS)
-    # If/when MbedTLS is re-enabled, link its targets here
-    # target_link_libraries(easy_cpace_core PUBLIC MbedTLS::mbedcrypto MbedTLS::mbedtls) # Adjust names if needed
-endif()
+# Link Monocypher library (fetched in root CMakeLists.txt)
+# Using PUBLIC ensures consumers of easy_cpace_core also link Monocypher
+target_link_libraries(easy_cpace_core PUBLIC monocypher_lib)
 
 # Public include directories for the final library
 target_include_directories(easy_cpace_core PUBLIC

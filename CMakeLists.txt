@@ -14,19 +14,51 @@ set(CMAKE_C_EXTENSIONS OFF)
 # --- Options ---
 option(CPACE_BUILD_TESTS "Build unit tests using Unity" ON)
 option(CPACE_BUILD_EXAMPLES "Build example programs" ON)
-option(CPACE_USE_OPENSSL "Enable OpenSSL backend" ON)  # Default ON for now
-option(CPACE_USE_MBEDTLS "Enable MbedTLS backend" ON) # Default ON for now
 option(CPACE_ENABLE_DEBUG_LOGGING "Enable debug printf statements" OFF) # Debug logging option
 
 message(STATUS "Build configuration:")
 message(STATUS "  Build Tests:    ${CPACE_BUILD_TESTS}")
 message(STATUS "  Build Examples: ${CPACE_BUILD_EXAMPLES}")
-message(STATUS "  Use OpenSSL:    ${CPACE_USE_OPENSSL}")
-message(STATUS "  Use MbedTLS:    ${CPACE_USE_MBEDTLS}")
+message(STATUS "  Backend:        Monocypher")
 
 if(NOT CPACE_USE_OPENSSL AND NOT CPACE_USE_MBEDTLS)
     message(FATAL_ERROR "At least one backend (OpenSSL or MbedTLS) must be enabled.")
 endif()
+
+# --- Fetch Dependencies ---
+include(FetchContent)
+
+# Ensure CMake knows CMAKE_SYSTEM_NAME for backend logic
+if(NOT CMAKE_SYSTEM_NAME)
+    message(FATAL_ERROR "CMAKE_SYSTEM_NAME is not defined. Cannot determine OS for RNG.")
+endif()
+message(STATUS "Detected System: ${CMAKE_SYSTEM_NAME}")
+
+# Monocypher (Example - add option later if creating backend)
+FetchContent_Declare(
+  monocypher
+  GIT_REPOSITORY https://github.com/LoupVaillant/Monocypher.git
+  GIT_TAG        4.0.2 # Use the specific tag requested
+)
+FetchContent_MakeAvailable(monocypher)
+
+# Create a library target for Monocypher
+# This makes it easier to link against if a backend is created.
+# We compile the C file directly into this static library.
+add_library(monocypher_lib STATIC
+    ${monocypher_SOURCE_DIR}/src/monocypher.c
+    ${monocypher_SOURCE_DIR}/src/monocypher.h
+)
+# Ensure consumers of monocypher_lib can find the header
+target_include_directories(monocypher_lib PUBLIC
+    ${monocypher_SOURCE_DIR}/src
+)
+# Optional: Add Ed25519 support if needed by a potential backend
+# target_sources(monocypher_lib PRIVATE
+#     ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c
+#     ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.h
+# )
+
 
 # --- Add Source Directory ---
 # This will build the library (core + selected backends)

@@ -14,13 +14,11 @@ extern void run_vector_tests(void);
 int main(void)
 {
     int failures = 0;
-    printf("Initializing OpenSSL backend...\n");
-    // --- !!! IMPORTANT: Initialize OpenSSL Backend !!! ---
-    // Required for tests using the OpenSSL provider, especially Elligator2.
-    // Assumes tests primarily use OpenSSL for now.
-    // If testing MbedTLS, similar init might be needed if it requires it.
-    if (easy_cpace_openssl_init() != CPACE_OK) {
-        printf("FATAL: Failed to initialize OpenSSL backend constants!\n");
+    printf("Initializing Monocypher backend (if needed)...\n");
+    // --- Initialize Monocypher Backend (Optional but good practice) ---
+    if (easy_cpace_monocypher_init() != CPACE_OK) {
+        // This currently always returns OK, but check anyway.
+        printf("FATAL: Failed to initialize Monocypher backend!\n");
         return 1; // Cannot run tests
     }
 
@@ -34,9 +32,9 @@ int main(void)
 
     failures = UNITY_END(); // Returns number of failures
 
-    // --- !!! IMPORTANT: Cleanup OpenSSL Backend !!! ---
-    printf("Cleaning up OpenSSL backend...\n");
-    easy_cpace_openssl_cleanup();
+    // --- Cleanup Monocypher Backend (Optional) ---
+    printf("Cleaning up Monocypher backend (if needed)...\n");
+    easy_cpace_monocypher_cleanup();
 
     return failures; // Return non-zero if tests failed
 }

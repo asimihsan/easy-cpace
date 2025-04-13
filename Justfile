@@ -31,11 +31,11 @@ lint-fix:
     fi
 
     mise x -- fd -e c -e h -E "build/" -E "third_party/" . -x clang-format -i {}
-    # Get OpenSSL include path from helper script
-    OPENSSL_INCLUDE="$(./scripts/find_openssl.sh)"
+    # Include paths for Unity are needed for clang-tidy
     UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
     UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
-    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE}
+    # Monocypher include path is handled via CMake target_include_directories
+    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE}
 
 lint:
     #!/usr/bin/env bash
@@ -56,11 +56,11 @@ lint:
     (echo "⛔ Formatting issues found:"; echo "$output"; exit 1)
     echo "✅ All files correctly formatted."
 
-    # Get OpenSSL include path from helper script
-    OPENSSL_INCLUDE="$(./scripts/find_openssl.sh)"
+    # Include paths for Unity are needed for clang-tidy
     UNITY_INCLUDE="${PWD}/build/_deps/unity-src/src"
     UNITY_HELPERS_INCLUDE="${PWD}/build/tests"
-    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${OPENSSL_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} 2>&1) || \
+    # Monocypher include path is handled via CMake target_include_directories
+    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} 2>&1) || \
     (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
 
 # Format a specific file

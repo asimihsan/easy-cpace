@@ -12,18 +12,18 @@ const crypto_provider_t *vector_test_provider = NULL;
 // --- Setup/Teardown for Vector Tests ---
 void setUp_vectors(void)
 {
-    // Make sure OpenSSL is initialized first
-    TEST_ASSERT_EQUAL_MESSAGE(CPACE_OK, easy_cpace_openssl_init(), "Failed to initialize OpenSSL backend");
+    // Initialize Monocypher backend (optional, but good practice)
+    TEST_ASSERT_EQUAL_MESSAGE(CPACE_OK, easy_cpace_monocypher_init(), "Failed to initialize Monocypher backend");
 
     // Get the provider
-    vector_test_provider = cpace_get_provider_openssl();
-    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "Failed to get OpenSSL provider in vector setUp");
+    vector_test_provider = cpace_get_provider_monocypher();
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "Failed to get Monocypher provider in vector setUp");
 }
 
 void tearDown_vectors(void)
 {
     vector_test_provider = NULL;
-    // Cleanup called in runner main
+    // Cleanup called in runner main (easy_cpace_monocypher_cleanup)
 }
 
 // --- Test Cases ---

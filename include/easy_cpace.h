@@ -36,52 +36,40 @@ typedef enum {
     CPACE_ERROR_PEER_KEY_INVALID = -4, // K == Identity
     CPACE_ERROR_BUFFER_TOO_SMALL = -5, // Should not happen with fixed sizes
     CPACE_ERROR_MALLOC = -6,
-    CPACE_ERROR_BACKEND_UNSUPPORTED = -7
+    CPACE_ERROR_BACKEND_UNSUPPORTED = -7, // Kept for potential future use
+    CPACE_ERROR_RNG_FAILED = -8
 } cpace_error_t;
 
-// --- Backend Provider Functions ---
+// --- Backend Provider Function ---
 /**
- * @brief Get the crypto provider implementation for OpenSSL.
- * @return Pointer to the provider struct, or NULL if OpenSSL support not
- * compiled in or init failed.
+ * @brief Get the crypto provider implementation for Monocypher.
+ * @return Pointer to the provider struct.
  */
-const crypto_provider_t *cpace_get_provider_openssl(void);
+const crypto_provider_t *cpace_get_provider_monocypher(void);
+
+// --- Monocypher Backend Specific Initialization ---
+// These might be needed if the Monocypher backend requires setup/teardown.
 
 /**
- * @brief Get the crypto provider implementation for Mbed TLS.
- * @return Pointer to the provider struct, or NULL if Mbed TLS support not
- * compiled in or init failed.
+ * @brief Initializes the Monocypher backend (if necessary).
+ * Currently a no-op, but kept for API consistency.
+ * @return Always returns CPACE_OK.
  */
-const crypto_provider_t *cpace_get_provider_mbedtls(void);
-
-// --- OpenSSL Backend Specific Initialization ---
-// These are only needed when using the OpenSSL backend.
+cpace_error_t easy_cpace_monocypher_init(void);
 
 /**
- * @brief Initializes internal OpenSSL constants (e.g., for Elligator2).
- * MUST be called once before performing CPace steps (start/respond) when
- * using the OpenSSL provider. It is safe to call multiple times; subsequent
- * calls have no effect unless easy_cpace_openssl_cleanup() has been called.
- * Not thread-safe for the *first* initialization if called concurrently.
- * @return CPACE_OK on success, CPACE_ERROR_CRYPTO_FAIL on failure.
+ * @brief Cleans up the Monocypher backend (if necessary).
+ * Currently a no-op, but kept for API consistency.
  */
-cpace_error_t easy_cpace_openssl_init(void);
-
-/**
- * @brief Cleans up internal OpenSSL constants initialized by easy_cpace_openssl_init().
- * Should be called when the OpenSSL provider is no longer needed to free resources.
- * It is safe to call multiple times or if not initialized.
- */
-void easy_cpace_openssl_cleanup(void);
+void easy_cpace_monocypher_cleanup(void);
 
 // --- Context Management ---
 /**
  * @brief Create a new CPace context.
  * @param role The role of this party (initiator or responder).
- * @param provider The cryptographic backend provider (e.g., from
- * cpace_get_provider_openssl). Must not be NULL.
- * @return A new context handle, or NULL on failure (e.g., malloc error,
- * provider init).
+ * @param provider The cryptographic backend provider (must be from
+ * cpace_get_provider_monocypher). Must not be NULL.
+ * @return A new context handle, or NULL on failure (e.g., malloc error).
  */
 cpace_ctx_t *cpace_ctx_new(cpace_role_t role, const crypto_provider_t *provider);
 

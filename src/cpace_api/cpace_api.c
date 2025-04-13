@@ -175,6 +175,5 @@ cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTE
     return result;
 }
 
-// Note: cpace_get_provider_openssl() and cpace_get_provider_mbedtls()
-// are implemented in their respective backend C files (e.g., openssl_backend.c)
-// and declared in easy_cpace.h. They are not part of this API implementation file.
+// Note: cpace_get_provider_monocypher() is implemented in the backend C file
+// (monocypher_backend.c) and declared in easy_cpace.h.

@@ -21,10 +21,6 @@ message(STATUS "  Build Tests:    ${CPACE_BUILD_TESTS}")
 message(STATUS "  Build Examples: ${CPACE_BUILD_EXAMPLES}")
 message(STATUS "  Backend:        Monocypher")
 
-if(NOT CPACE_USE_OPENSSL AND NOT CPACE_USE_MBEDTLS)
-    message(FATAL_ERROR "At least one backend (OpenSSL or MbedTLS) must be enabled.")
-endif()
-
 # --- Fetch Dependencies ---
 include(FetchContent)
 
@@ -78,7 +74,7 @@ endif()
 
 # --- Installation Rules (Basic Example) ---
 include(GNUInstallDirs)
-install(TARGETS easy_cpace_core # Install the actual core library target, not the alias
+install(TARGETS easy_cpace_core monocypher_lib # Install the core library and its dependency
     EXPORT EasyCPaceTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

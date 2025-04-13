@@ -22,16 +22,16 @@ const crypto_provider_t *test_provider = NULL;
 void setUp_api(void)
 {
     // Runs before each test function in this file
-    test_provider = cpace_get_provider_openssl();
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_provider, "Failed to get OpenSSL provider");
-    // Note: easy_cpace_openssl_init() is called once in test_runner.c main()
+    test_provider = cpace_get_provider_monocypher();
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_provider, "Failed to get Monocypher provider");
+    // Note: easy_cpace_monocypher_init() is called once in test_runner.c main()
 }
 
 void tearDown_api(void)
 {
     // Runs after each test function in this file
     test_provider = NULL;
-    // Note: easy_cpace_openssl_cleanup() is called once in test_runner.c main()
+    // Note: easy_cpace_monocypher_cleanup() is called once in test_runner.c main()
 }
 
 // --- Test Cases ---

@@ -18,9 +18,10 @@ void tearDown(void) { tearDown_api(); }
 
 int main(void)
 {
-    // Initialize OpenSSL backend
-    if (easy_cpace_openssl_init() != CPACE_OK) {
-        printf("FATAL: Failed to initialize OpenSSL backend constants!\n");
+    // Initialize Monocypher backend (optional, but good practice)
+    if (easy_cpace_monocypher_init() != CPACE_OK) {
+        // This currently always returns OK, but check anyway.
+        printf("FATAL: Failed to initialize Monocypher backend!\n");
         return 1;
     }
 
@@ -34,8 +35,8 @@ int main(void)
 
     int result = UNITY_END();
 
-    // Cleanup OpenSSL
-    easy_cpace_openssl_cleanup();
+    // Cleanup Monocypher backend (optional)
+    easy_cpace_monocypher_cleanup();
 
     return result;
 }

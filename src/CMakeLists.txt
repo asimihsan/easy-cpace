@@ -31,6 +31,10 @@ add_library(cpace_common OBJECT
 target_include_directories(cpace_common PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> # Allow utils to see crypto_iface
 )
+# Enable debug logging for this component if requested globally
+if(CPACE_ENABLE_DEBUG_LOGGING)
+    target_compile_definitions(cpace_common PRIVATE CPACE_DEBUG_LOG)
+endif()
 
 # --- Core Protocol Logic ---
 add_library(cpace_protocol_logic OBJECT
@@ -96,6 +100,12 @@ target_include_directories(easy_cpace_core PUBLIC
     # $<INSTALL_INTERFACE:include> # Handled by install(TARGETS ... INCLUDES)
     # $<BUILD_INTERFACE:${OpenSSL_INCLUDE_DIR}> # Usually not needed
 )
+
+# Add compile definition for debug logging if enabled
+if(CPACE_ENABLE_DEBUG_LOGGING)
+    target_compile_definitions(easy_cpace_core PUBLIC CPACE_DEBUG_LOG)
+    message(STATUS "Debug logging enabled for easy_cpace_core")
+endif()
 
 # Alias remains the same
 add_library(easy_cpace ALIAS easy_cpace_core)

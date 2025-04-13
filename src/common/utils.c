@@ -43,6 +43,26 @@ int cpace_const_time_memcmp(const void *a, const void *b, size_t size)
     return (int)(diff & 1);
 }
 
+#ifdef CPACE_DEBUG_LOG
+#include <stdio.h> // Include stdio only when debugging is enabled
+// Debug print helper implementation
+void cpace_debug_print_hex(const char *label, const uint8_t *data, size_t len)
+{
+    if (!label || !data) {
+        return;
+    }
+    printf("DEBUG: %s (%zu bytes): ", label, len);
+    if (len == 0) {
+        printf("(empty)\n");
+        return;
+    }
+    for (size_t i = 0; i < len; ++i) {
+        printf("%02x", data[i]);
+    }
+    printf("\n");
+}
+#endif // CPACE_DEBUG_LOG
+
 // Check if point is identity (all zeros)
 int cpace_is_identity(const uint8_t point[CPACE_CRYPTO_POINT_BYTES])
 {
@@ -146,7 +166,8 @@ size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label,
     return written;
 }
 
-// Construct input string for generator hash
+// Construct input string for generator hash according to RFC Appendix A.2 (lv_cat)
+// Format: lv(DSI) || lv(PRS) || lv(ZPAD) || lv(CI) || lv(SID)
 size_t cpace_construct_generator_hash_input(const uint8_t *prs,
                                             size_t prs_len,
                                             const uint8_t *ci,
@@ -158,53 +179,55 @@ size_t cpace_construct_generator_hash_input(const uint8_t *prs,
 {
     size_t written = 0;
     uint8_t *current_out = out;
-    size_t required_size;
+    size_t required_size = 0;
     size_t zpad_len = 0;
+    uint8_t zpad_buf[CPACE_CRYPTO_HASH_BLOCK_BYTES]; // Max possible ZPAD size
 
-    // Calculate required size: DSI || PRS || ZPAD || L(CI) || CI || L(sid) || sid
-    if (ci_len > 255 || sid_len > 255) {
+    // Validate lengths for single-byte lv encoding
+    if (CPACE_CRYPTO_DSI_LEN > 255 || prs_len > 255 || ci_len > 255 || sid_len > 255) {
         return 0; // Lengths too large for single-byte encoding
     }
+    if (!prs || !ci || !sid || !out) {
+        return 0; // Invalid arguments
+    }
 
-    size_t header_len = CPACE_CRYPTO_DSI_LEN + prs_len;
-    if (header_len < CPACE_CRYPTO_HASH_BLOCK_BYTES) {
-        zpad_len = CPACE_CRYPTO_HASH_BLOCK_BYTES - header_len;
-    } // Else: No padding needed if header already fills/exceeds block size
+    // Calculate ZPAD length based on RFC A.2
+    // len(prepend_len(X)) = 1 + len(X) for single-byte length
+    size_t lv_dsi_len = 1 + CPACE_CRYPTO_DSI_LEN;
+    size_t lv_prs_len = 1 + prs_len;
+    if ((lv_dsi_len + lv_prs_len) < (CPACE_CRYPTO_HASH_BLOCK_BYTES - 1)) { // -1 for the ZPAD length byte itself
+        zpad_len = CPACE_CRYPTO_HASH_BLOCK_BYTES - 1 - lv_prs_len - lv_dsi_len;
+    }
+    // Ensure zpad_len doesn't exceed buffer or 255
+    if (zpad_len > sizeof(zpad_buf) || zpad_len > 255) {
+        // This case should ideally not happen with standard block sizes and inputs
+        return 0; // ZPAD too large
+    }
+    memset(zpad_buf, 0, zpad_len); // Prepare ZPAD content
 
-    required_size = header_len + zpad_len + 1 + ci_len + 1 + sid_len;
+    // Calculate total required size for lv_cat(DSI, PRS, ZPAD, CI, SID)
+    required_size = (1 + CPACE_CRYPTO_DSI_LEN) + (1 + prs_len) + (1 + zpad_len) + (1 + ci_len) + (1 + sid_len);
 
     if (out_size < required_size) {
         return 0; // Buffer too small
     }
 
-    // DSI
-    current_out = append_data(current_out, (const uint8_t *)CPACE_CRYPTO_DSI, CPACE_CRYPTO_DSI_LEN, &written, out_size);
-    // PRS
-    current_out = append_data(current_out, prs, prs_len, &written, out_size);
-    // ZPAD
-    if (zpad_len > 0) {
-        // Check capacity before memset (should be fine due to initial check)
-        if ((written + zpad_len) > out_size) {
-            return 0;
-        }
-        memset(current_out + written, 0, zpad_len);
-        written += zpad_len;
-    }
-    // L(CI)
-    uint8_t L_ci = (uint8_t)ci_len;
-    current_out = append_data(current_out, &L_ci, 1, &written, out_size);
-    // CI
-    current_out = append_data(current_out, ci, ci_len, &written, out_size);
-    // L(sid)
-    uint8_t L_sid = (uint8_t)sid_len;
-    current_out = append_data(current_out, &L_sid, 1, &written, out_size);
-    // sid
-    current_out = append_data(current_out, sid, sid_len, &written, out_size);
+    // Construct using lv encoding for all parts
+    current_out = append_lv(current_out, (const uint8_t *)CPACE_CRYPTO_DSI, CPACE_CRYPTO_DSI_LEN, &written, out_size);
+    current_out = append_lv(current_out, prs, prs_len, &written, out_size);
+    current_out = append_lv(current_out, zpad_buf, zpad_len, &written, out_size); // Append ZPAD content
+    current_out = append_lv(current_out, ci, ci_len, &written, out_size);
+    current_out = append_lv(current_out, sid, sid_len, &written, out_size);
 
-    if (!current_out) { // Check if any append failed
+    if (!current_out) {           // Check if any append failed
+        memset(out, 0, out_size); // Simple cleanse
         return 0;
     }
 
     assert(written == required_size);
+
+#ifdef CPACE_DEBUG_LOG
+    cpace_debug_print_hex("Constructed Generator Input", out, written);
+#endif // CPACE_DEBUG_LOG
     return written;
 }

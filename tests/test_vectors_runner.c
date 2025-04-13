@@ -12,18 +12,14 @@ extern void tearDown_vectors(void);
 // Standard Unity setup/teardown functions (required)
 void setUp(void)
 {
-    // Call the vectors-specific setup if it exists, otherwise do nothing
-#ifdef setUp_vectors
+    // Call the vectors-specific setup
     setUp_vectors();
-#endif
 }
 
 void tearDown(void)
 {
-    // Call the vectors-specific teardown if it exists, otherwise do nothing
-#ifdef tearDown_vectors
+    // Call the vectors-specific teardown
     tearDown_vectors();
-#endif
 }
 
 int main(void)

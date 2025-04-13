@@ -1,11 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
-
-cmake_policy(SET CMP0159 NEW)
-cmake_policy(SET CMP0126 NEW)
-cmake_policy(SET CMP0156 NEW)
-cmake_policy(SET CMP0082 NEW)
+cmake_minimum_required(VERSION 3.27) # Increased version to cover policies
 
 project(EasyCPace LANGUAGES C VERSION 0.1.0)
+
+# Policies CMP0159, CMP0126, CMP0082 are implicitly NEW with version 3.27
+# Explicitly set CMP0156 just in case minimum_required isn't fully propagating
+cmake_policy(SET CMP0156 NEW)
 
 # --- Standard Project Setup ---
 set(CMAKE_C_STANDARD 99)
@@ -17,6 +16,7 @@ option(CPACE_BUILD_TESTS "Build unit tests using Unity" ON)
 option(CPACE_BUILD_EXAMPLES "Build example programs" ON)
 option(CPACE_USE_OPENSSL "Enable OpenSSL backend" ON)  # Default ON for now
 option(CPACE_USE_MBEDTLS "Enable MbedTLS backend" ON) # Default ON for now
+option(CPACE_ENABLE_DEBUG_LOGGING "Enable debug printf statements" OFF) # Debug logging option
 
 message(STATUS "Build configuration:")
 message(STATUS "  Build Tests:    ${CPACE_BUILD_TESTS}")

@@ -86,4 +86,16 @@ size_t cpace_construct_generator_hash_input(const uint8_t *prs,
                                             uint8_t *out,
                                             size_t out_size);
 
+#ifdef CPACE_DEBUG_LOG
+#include <stdio.h> // Include stdio only when debugging is enabled
+/**
+ * @brief Prints a byte array in hex format for debugging.
+ * Only compiled if CPACE_DEBUG_LOG is defined.
+ * @param label A descriptive label for the output.
+ * @param data The byte array to print.
+ * @param len The length of the byte array.
+ */
+void cpace_debug_print_hex(const char *label, const uint8_t *data, size_t len);
+#endif // CPACE_DEBUG_LOG
+
 #endif // CPACE_UTILS_H

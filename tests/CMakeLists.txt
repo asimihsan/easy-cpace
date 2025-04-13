@@ -1,5 +1,6 @@
-# tests/CMakeLists.txt
-cmake_minimum_required(VERSION 3.14) # Ensure modern CMake for FetchContent
+cmake_minimum_required(VERSION 3.27) # Match root CMake version
+
+cmake_policy(SET CMP0156 NEW)
 
 # --- Unity Test Framework using FetchContent ---
 include(FetchContent)
@@ -49,6 +50,12 @@ function(add_unity_test TEST_NAME)
   # Register with CTest
   add_test(NAME ${TEST_NAME} COMMAND ${RUNNER_TARGET})
   set_property(TEST ${TEST_NAME} PROPERTY LABELS "${TEST_LABEL}")
+
+  # Add compile definition for debug logging if enabled
+  if(CPACE_ENABLE_DEBUG_LOGGING)
+      target_compile_definitions(${RUNNER_TARGET} PRIVATE CPACE_DEBUG_LOG)
+  endif()
+
 endfunction()
 
 # --- Test helper for running a test with setup/teardown ---

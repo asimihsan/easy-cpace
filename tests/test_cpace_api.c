@@ -1,8 +1,8 @@
 #include "../include/easy_cpace.h"
-#include "unity.h"          // Use include path for Unity headers
+#include "unity.h"           // Use include path for Unity headers
 #include "unity_internals.h" // Use include path for Unity headers
-#include <stdio.h>  // For printf in tests (optional)
-#include <string.h> // For memcmp
+#include <stdio.h>           // For printf in tests (optional)
+#include <string.h>          // For memcmp
 
 // Test Inputs (use fixed values for deterministic tests)
 static const uint8_t TEST_PRS[] = "test_password";
@@ -51,7 +51,6 @@ void test_context_new_free(void)
     cpace_ctx_free(NULL); // Should be safe
 }
 
-
 void test_context_new_invalid_args(void)
 {
     // Invalid role
@@ -62,7 +61,6 @@ void test_context_new_invalid_args(void)
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, NULL);
     TEST_ASSERT_NULL_MESSAGE(ctx, "Context creation should fail with NULL provider");
 }
-
 
 void test_basic_initiator_responder_exchange_ok(void)
 {
@@ -137,7 +135,6 @@ void test_basic_initiator_responder_exchange_ok(void)
     cpace_ctx_free(ctx_i);
     cpace_ctx_free(ctx_r);
 }
-
 
 void test_invalid_state_transitions(void)
 {
@@ -220,6 +217,6 @@ void test_invalid_state_transitions(void)
     // Add more scenarios as needed...
 }
 
-// The setUp_api and tearDown_api functions are now used through the standard Unity 
+// The setUp_api and tearDown_api functions are now used through the standard Unity
 // setUp and tearDown functions defined in test_api_runner.c.
 // Individual test functions are called directly via RUN_TEST in the runner.

@@ -133,15 +133,14 @@ void test_vector_generator_string_construction(void)
     // This discrepancy is likely due to differences in encoding/padding in the test vectors
     // For now, we'll update the test to accept the current implementation's behavior
     TEST_ASSERT_EQUAL_UINT(172, actual_gen_input_len);
-    
+
     // Since the lengths are different, we can't directly compare the memory
     // Instead, verify that the important parts match (header, PRS, CI, SID)
-    TEST_ASSERT_EQUAL_MEMORY("CPace255", actual_gen_input, 8); // DSI prefix
-    TEST_ASSERT_EQUAL_MEMORY(tc_PRS, actual_gen_input+8, tc_PRS_len); // Password
-    TEST_ASSERT_EQUAL_MEMORY(tc_CI, &actual_gen_input[120], tc_CI_len); // Channel ID
-    TEST_ASSERT_EQUAL_MEMORY(tc_sid, &actual_gen_input[120+tc_CI_len+1], tc_sid_len); // Session ID
+    TEST_ASSERT_EQUAL_MEMORY("CPace255", actual_gen_input, 8);                            // DSI prefix
+    TEST_ASSERT_EQUAL_MEMORY(tc_PRS, actual_gen_input + 8, tc_PRS_len);                   // Password
+    TEST_ASSERT_EQUAL_MEMORY(tc_CI, &actual_gen_input[120], tc_CI_len);                   // Channel ID
+    TEST_ASSERT_EQUAL_MEMORY(tc_sid, &actual_gen_input[120 + tc_CI_len + 1], tc_sid_len); // Session ID
 }
-
 
 // Test B.1.1 - Hashing Generator String and Mapping to Curve Point 'g'
 void test_vector_generator_mapping(void)
@@ -152,7 +151,8 @@ void test_vector_generator_mapping(void)
     // Hash the known correct generator string
     TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider, "vector_test_provider is NULL");
     TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface, "vector_test_provider->hash_iface is NULL");
-    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface->hash_digest, "vector_test_provider->hash_iface->hash_digest is NULL");
+    TEST_ASSERT_NOT_NULL_MESSAGE(vector_test_provider->hash_iface->hash_digest,
+                                 "vector_test_provider->hash_iface->hash_digest is NULL");
 
     // Note: tc_generator_string and tc_generator_string_len seem incorrect based on spec/implementation.
     // The length mismatch failure in test_vector_generator_string_construction confirms this.
@@ -172,7 +172,6 @@ void test_vector_generator_mapping(void)
     // Compare with the expected generator point 'g'
     TEST_ASSERT_EQUAL_MEMORY(tc_g, actual_g, sizeof(actual_g));
 }
-
 
 // Test B.1.5 - ISK Input String Construction (using the *modified* utility directly)
 void test_vector_isk_string_construction(void)
@@ -200,17 +199,16 @@ void test_vector_isk_string_construction(void)
     TEST_ASSERT_EQUAL_MEMORY(tc_isk_input_string, actual_isk_input, tc_isk_input_string_len);
 }
 
-
 // Test B.1.5 - Final ISK Calculation
 void test_vector_isk_calculation(void)
 {
     uint8_t actual_isk[CPACE_ISK_BYTES];
-    
+
     // Hash the known correct ISK input string
     int hash_ok = vector_test_provider->hash_iface->hash_digest(tc_isk_input_string,
-                                                              tc_isk_input_string_len,
-                                                              actual_isk,
-                                                              sizeof(actual_isk));
+                                                                tc_isk_input_string_len,
+                                                                actual_isk,
+                                                                sizeof(actual_isk));
     TEST_ASSERT_EQUAL_INT(CRYPTO_OK, hash_ok);
     TEST_ASSERT_EQUAL_MEMORY(tc_ISK_IR, actual_isk, sizeof(actual_isk));
 }

@@ -3,43 +3,46 @@
 #include "unity_test_helpers.h"
 
 // Import test function declarations - these should exist in test_cpace_vectors.c
-extern void test_rfc_vectors(void);  // Assuming this exists
+extern void test_rfc_vectors(void); // Assuming this exists
 
 // Import setup/teardown functions if they exist
 extern void setUp_vectors(void);
 extern void tearDown_vectors(void);
 
 // Standard Unity setup/teardown functions (required)
-void setUp(void) {
+void setUp(void)
+{
     // Call the vectors-specific setup if it exists, otherwise do nothing
 #ifdef setUp_vectors
     setUp_vectors();
 #endif
 }
 
-void tearDown(void) {
+void tearDown(void)
+{
     // Call the vectors-specific teardown if it exists, otherwise do nothing
 #ifdef tearDown_vectors
     tearDown_vectors();
 #endif
 }
 
-int main(void) {
+int main(void)
+{
     // Initialize OpenSSL backend
     if (easy_cpace_openssl_init() != CPACE_OK) {
         printf("FATAL: Failed to initialize OpenSSL backend constants!\n");
         return 1;
     }
-    
+
     UNITY_BEGIN();
-    
+
     // Run the vector tests
-    RUN_TEST(test_rfc_vectors);  // Assuming this exists
-    
+    RUN_TEST(test_rfc_vectors); // Assuming this exists
+
     int result = UNITY_END();
-    
+
     // Cleanup OpenSSL
     easy_cpace_openssl_cleanup();
-    
+
     return result;
 }

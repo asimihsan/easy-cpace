@@ -3,8 +3,11 @@ cmake_minimum_required(VERSION 3.27) # Match root CMake version
 cmake_policy(SET CMP0156 NEW)
 
 # --- Find Python for Generator Script ---
+# Try to hint CMake to use the Python found by the environment (mise)
+# This assumes mise puts the correct python directory early in PATH or sets relevant env vars
+set(Python3_EXECUTABLE $ENV{PYTHON_EXECUTABLE} CACHE FILEPATH "Path to Python interpreter")
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
-message(STATUS "Found Python3 interpreter: ${Python3_EXECUTABLE}")
+message(STATUS "Using Python3 interpreter: ${Python3_EXECUTABLE}")
 
 # --- Unity Test Framework using FetchContent ---
 include(FetchContent)
@@ -70,7 +73,6 @@ configure_file(
 )
 
 # --- Generate RFC Vector Header ---
-set(RFC_VECTOR_TXT ${CMAKE_CURRENT_SOURCE_DIR}/rfc_b1_vectors.txt)
 set(GENERATED_VECTOR_HEADER ${CMAKE_CURRENT_BINARY_DIR}/generated_rfc_vectors.h)
 set(VECTOR_GENERATOR_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/generate_test_vectors.py)
 
@@ -80,7 +82,7 @@ add_custom_command(
   DEPENDS ${VECTOR_GENERATOR_SCRIPT} ${RFC_VECTOR_TXT}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} # Run script from project root
   COMMENT "Generating C header from RFC test vectors..."
-  VERBATIM # Ensure commands are not quoted unnecessarily
+  # VERBATIM removed, might help with comment visibility
 )
 
 # Custom target to drive the generation

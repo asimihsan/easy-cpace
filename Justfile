@@ -56,3 +56,5 @@ format-file file:
 clean:
     rm -rf build
     rm -rf cmake-build-debug
+
+clean-build-test: clean build test

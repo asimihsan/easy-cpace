@@ -29,15 +29,9 @@ add_subdirectory(src)
 
 # --- Add Tests ---
 if(CPACE_BUILD_TESTS)
-    # Check if Unity is available (e.g., via submodule)
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/vendor/unity/src/unity.c")
-         message(WARNING "Unity test framework not found in tests/vendor/unity. Tests will be skipped. "
-                         "Initialize submodules: git submodule update --init --recursive")
-         set(CPACE_BUILD_TESTS OFF) # Disable tests if Unity not found
-    else()
-        enable_testing()
-        add_subdirectory(tests)
-    endif()
+    # We're using FetchContent in tests/CMakeLists.txt to download Unity
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 # --- Add Examples ---

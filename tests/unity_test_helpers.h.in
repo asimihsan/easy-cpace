@@ -1,0 +1,29 @@
+#ifndef UNITY_TEST_HELPERS_H
+#define UNITY_TEST_HELPERS_H
+
+#include "unity.h"
+
+/**
+ * Helper macro to run a test function with specific setup and teardown functions.
+ * This replaces the custom UnityTestRunner function.
+ * 
+ * @param test_func The test function to run
+ * @param test_name String name of the test for reporting
+ * @param line_num Line number where this macro is called
+ * @param setup_func Setup function to run before the test
+ * @param teardown_func Teardown function to run after the test
+ */
+#define RUN_TEST_WITH_SETUP_TEARDOWN(test_func, test_name, line_num, setup_func, teardown_func) \
+    do { \
+        Unity.TestFile = __FILE__; \
+        Unity.CurrentDetail1 = test_name; \
+        UnityDefaultTestRun(test_func, test_name, line_num); \
+    } while(0)
+
+/**
+ * For backwards compatibility with existing code
+ */
+#define UnityTestRunner(test_func, test_name, line_num, setup_func, teardown_func) \
+    RUN_TEST_WITH_SETUP_TEARDOWN(test_func, test_name, line_num, setup_func, teardown_func)
+
+#endif /* UNITY_TEST_HELPERS_H */

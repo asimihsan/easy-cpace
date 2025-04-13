@@ -1,62 +1,92 @@
 # tests/CMakeLists.txt
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14) # Ensure modern CMake for FetchContent
 
-# --- Unity Test Framework ---
-# Add Unity source file (assuming it's in vendor/unity/src relative to this CMakeLists.txt)
-# Check if the source file exists first.
-if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c")
-    message(FATAL_ERROR "Unity source not found in tests/vendor/unity/src. "
-            "Please ensure the submodule is initialized: git submodule update --init --recursive")
-endif ()
+# --- Unity Test Framework using FetchContent ---
+include(FetchContent)
 
-add_library(unity STATIC
-        vendor/unity/src/unity.c
-        # Add fixture support if you plan to use it later:
-        # vendor/unity/src/unity_fixture.c
-)
-target_include_directories(unity PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
-        # For unity_fixture.h if used:
-        # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
+# Define the Unity repository and version to use
+FetchContent_Declare(
+  unity
+  GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
+  GIT_TAG        v2.6.0  # Use a specific, stable version
 )
 
+# Make Unity available - need to handle it manually as it doesn't have a CMakeLists.txt
+FetchContent_GetProperties(unity)
+if(NOT unity_POPULATED)
+  FetchContent_Populate(unity)
+  
+  # Create a library target for Unity
+  add_library(unity STATIC
+    ${unity_SOURCE_DIR}/src/unity.c
+  )
+  
+  target_include_directories(unity PUBLIC
+    ${unity_SOURCE_DIR}/src
+  )
+endif()
 
-# needed if you have a local unity_config.h
-# target_compile_definitions(unity PUBLIC UNITY_INCLUDE_CONFIG_H)
+# Add helper function for defining tests
+function(add_unity_test TEST_NAME)
+  # Parse arguments
+  cmake_parse_arguments(TEST "" "SUITE" "SOURCES;LINK_LIBS" ${ARGN})
+  
+  set(RUNNER_TARGET "test_${TEST_NAME}")
+  set(TEST_LABEL "${TEST_SUITE}")
+  
+  # Define the executable
+  add_executable(${RUNNER_TARGET} ${TEST_SOURCES})
+  
+  # Link common dependencies
+  target_link_libraries(${RUNNER_TARGET} PRIVATE
+    unity
+    ${TEST_LINK_LIBS}
+  )
+  
+  # Ensure include paths are set
+  target_include_directories(${RUNNER_TARGET} PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src     # For internal headers if needed
+  )
+  
+  # Register with CTest
+  add_test(NAME ${TEST_NAME} COMMAND ${RUNNER_TARGET})
+  set_property(TEST ${TEST_NAME} PROPERTY LABELS "${TEST_LABEL}")
+endfunction()
 
-# --- Test Runner Executable ---
-add_executable(cpace_test_runner
-        test_runner.c       # Main test runner entry point
-        test_cpace_api.c    # Test cases for the public API and flow
-        test_cpace_vectors.c # Test cases for RFC vectors
+# --- Test helper for running a test with setup/teardown ---
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/unity_test_helpers.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/unity_test_helpers.h
+  @ONLY
 )
 
-# Link the test runner against our library and Unity
-target_link_libraries(cpace_test_runner PRIVATE
-        easy_cpace_core # Link against the actual core library target
-        unity
+# --- Define API Tests ---
+add_unity_test(cpace_api
+  SUITE "API"
+  SOURCES
+    test_api_runner.c
+    test_cpace_api.c
+  LINK_LIBS
+    easy_cpace_core
 )
 
-# Include directories needed by tests (e.g., to see easy_cpace.h)
-# The easy_cpace_core target should propagate its public include dirs,
-# but we might need project source include if tests need internal headers.
-target_include_directories(cpace_test_runner PRIVATE
-        # Access to easy_cpace.h (should be inherited via linking easy_cpace_core)
-        # ${CMAKE_SOURCE_DIR}/include
-        # Access to internal headers if needed (e.g., test helpers might need crypto_provider.h)
-        # ${CMAKE_SOURCE_DIR}/src
-
-        # Explicitly add Unity includes here in case propagation fails
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src
+target_include_directories(test_cpace_api PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}  # For generated unity_test_helpers.h
 )
 
+# --- Define Vector Tests ---
+add_unity_test(cpace_vectors
+  SUITE "Vectors"
+  SOURCES
+    test_vectors_runner.c
+    test_cpace_vectors.c
+  LINK_LIBS
+    easy_cpace_core
+)
 
-# --- Register with CTest ---
-# Add the test runner executable to CTest
-add_test(NAME EasyCPaceTests COMMAND cpace_test_runner)
+target_include_directories(test_cpace_vectors PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}  # For generated unity_test_helpers.h
+)
 
 message(STATUS "Unity tests configured. Run with 'ctest' or 'just test'.")
-
-# Optional: Add a custom target to run tests via 'make test' or 'ninja test'
-# This depends on enable_testing() being called in the root CMakeLists.txt (which it is).
-# The command 'ctest' will already work in the build directory.

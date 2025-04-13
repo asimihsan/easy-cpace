@@ -220,18 +220,6 @@ void test_invalid_state_transitions(void)
     // Add more scenarios as needed...
 }
 
-// --- Test Suite Runner ---
-// This function is called by test_runner.c
-void run_api_tests(void)
-{
-    // Setup for the whole suite (if needed, beyond setUp/tearDown)
-
-    // Run individual tests using the API-specific setup/teardown
-    UnityTestRunner(test_context_new_free, "test_context_new_free", __LINE__, setUp_api, tearDown_api);
-    UnityTestRunner(test_context_new_invalid_args, "test_context_new_invalid_args", __LINE__, setUp_api, tearDown_api);
-    UnityTestRunner(test_basic_initiator_responder_exchange_ok, "test_basic_initiator_responder_exchange_ok", __LINE__, setUp_api, tearDown_api);
-    UnityTestRunner(test_invalid_state_transitions, "test_invalid_state_transitions", __LINE__, setUp_api, tearDown_api);
-    // Add more tests here using UnityTestRunner with setUp_api/tearDown_api
-
-    // Teardown for the whole suite (if needed)
-}
+// The setUp_api and tearDown_api functions are now used through the standard Unity 
+// setUp and tearDown functions defined in test_api_runner.c.
+// Individual test functions are called directly via RUN_TEST in the runner.

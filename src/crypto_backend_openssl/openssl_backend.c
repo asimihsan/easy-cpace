@@ -22,8 +22,9 @@ struct crypto_hash_ctx_st {
 static crypto_hash_ctx_t *openssl_hash_new(void)
 {
     crypto_hash_ctx_t *ctx = (crypto_hash_ctx_t *)OPENSSL_malloc(sizeof(crypto_hash_ctx_t));
-    if (!ctx)
+    if (!ctx) {
         return NULL;
+    }
 
     ctx->evp_ctx = EVP_MD_CTX_new();
     if (!ctx->evp_ctx) {
@@ -50,23 +51,26 @@ static void openssl_hash_free(crypto_hash_ctx_t *ctx)
 
 static int openssl_hash_reset(crypto_hash_ctx_t *ctx)
 {
-    if (!ctx || !ctx->evp_ctx)
+    if (!ctx || !ctx->evp_ctx) {
         return CRYPTO_ERROR;
+    }
     // Re-initialize for SHA-512
     return EVP_DigestInit_ex(ctx->evp_ctx, EVP_sha512(), NULL); // Returns 1 on success
 }
 
 static int openssl_hash_update(crypto_hash_ctx_t *ctx, const uint8_t *data, size_t len)
 {
-    if (!ctx || !ctx->evp_ctx)
+    if (!ctx || !ctx->evp_ctx) {
         return CRYPTO_ERROR;
+    }
     return EVP_DigestUpdate(ctx->evp_ctx, data, len); // Returns 1 on success
 }
 
 static int openssl_hash_final(crypto_hash_ctx_t *ctx, uint8_t *out)
 {
-    if (!ctx || !ctx->evp_ctx || !out)
+    if (!ctx || !ctx->evp_ctx || !out) {
         return CRYPTO_ERROR;
+    }
     unsigned int len = CPACE_CRYPTO_HASH_BYTES; // Should match EVP_MD_size
     int ret = EVP_DigestFinal_ex(ctx->evp_ctx, out, &len);
     // Reset after finalization to allow reuse
@@ -84,22 +88,28 @@ static int openssl_hash_digest(const uint8_t *data, size_t len, uint8_t *out, si
     uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES]; // Max possible size
     int ret = CRYPTO_ERROR;
 
-    if (!out || out_len == 0 || out_len > CPACE_CRYPTO_HASH_BYTES)
+    if (!out || out_len == 0 || out_len > CPACE_CRYPTO_HASH_BYTES) {
         return CRYPTO_ERROR;
+    }
 
     ctx = EVP_MD_CTX_new();
-    if (!ctx)
+    if (!ctx) {
         return CRYPTO_ERROR;
+    }
 
-    if (EVP_DigestInit_ex(ctx, EVP_sha512(), NULL) != 1)
+    if (EVP_DigestInit_ex(ctx, EVP_sha512(), NULL) != 1) {
         goto cleanup;
-    if (EVP_DigestUpdate(ctx, data, len) != 1)
+    }
+    if (EVP_DigestUpdate(ctx, data, len) != 1) {
         goto cleanup;
-    if (EVP_DigestFinal_ex(ctx, full_hash, &hash_len) != 1)
+    }
+    if (EVP_DigestFinal_ex(ctx, full_hash, &hash_len) != 1) {
         goto cleanup;
+    }
 
-    if (hash_len < out_len) // Should not happen for SHA512
+    if (hash_len < out_len) { // Should not happen for SHA512
         goto cleanup;
+    }
 
     memcpy(out, full_hash, out_len); // Take the first out_len bytes
     ret = CRYPTO_OK;
@@ -132,34 +142,41 @@ static int openssl_scalar_mult(uint8_t *out_point, const uint8_t *scalar, const 
     size_t secret_len = CPACE_CRYPTO_POINT_BYTES;
     int ret = CRYPTO_ERROR;
 
-    if (!out_point || !scalar || !base_point)
+    if (!out_point || !scalar || !base_point) {
         return CRYPTO_ERROR;
+    }
 
     // Create peer key object from base_point
     peer_key = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, base_point, CPACE_CRYPTO_POINT_BYTES);
-    if (!peer_key)
+    if (!peer_key) {
         goto cleanup;
+    }
 
     // Create private key object from scalar
     // Note: OpenSSL clamps the scalar internally during derivation if using EVP_PKEY_derive
     // but if constructing the key manually, ensure it's clamped if necessary (openssl_generate_scalar does this)
     priv_key = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, scalar, CPACE_CRYPTO_SCALAR_BYTES);
-    if (!priv_key)
+    if (!priv_key) {
         goto cleanup;
+    }
 
     // Create context for derivation
     ctx = EVP_PKEY_CTX_new(priv_key, NULL);
-    if (!ctx)
+    if (!ctx) {
         goto cleanup;
+    }
 
-    if (EVP_PKEY_derive_init(ctx) != 1)
+    if (EVP_PKEY_derive_init(ctx) != 1) {
         goto cleanup;
-    if (EVP_PKEY_derive_set_peer(ctx, peer_key) != 1)
+    }
+    if (EVP_PKEY_derive_set_peer(ctx, peer_key) != 1) {
         goto cleanup;
+    }
 
     // Perform the derivation (scalar multiplication)
-    if (EVP_PKEY_derive(ctx, out_point, &secret_len) != 1)
+    if (EVP_PKEY_derive(ctx, out_point, &secret_len) != 1) {
         goto cleanup;
+    }
 
     if (secret_len != CPACE_CRYPTO_POINT_BYTES) {
         // Should not happen for X25519
@@ -171,8 +188,7 @@ static int openssl_scalar_mult(uint8_t *out_point, const uint8_t *scalar, const 
         ret = CRYPTO_ERR_POINT_IS_IDENTITY; // Specific error code
         // Cleanse the output buffer if it's identity
         OPENSSL_cleanse(out_point, CPACE_CRYPTO_POINT_BYTES);
-    }
-    else {
+    } else {
         ret = CRYPTO_OK;
     }
 
@@ -258,8 +274,7 @@ cpace_error_t easy_cpace_openssl_init(void)
     if (ensure_elligator_constants() == 1) {
         openssl_backend_initialized = 1;
         return CPACE_OK;
-    }
-    else {
+    } else {
         // Initialization failed
         openssl_backend_initialized = 0;
         return CPACE_ERROR_CRYPTO_FAIL;

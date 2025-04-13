@@ -1,11 +1,11 @@
-// tests/test_runner.c
-#include "easy_cpace.h" // Include to call init/cleanup
-#include "unity.h"
+#include "../include/easy_cpace.h" // Include to call init/cleanup
+#include "vendor/unity/src/unity.h"
 #include <stdio.h>
 
 // --- Declare Test Suites ---
 // Forward declare functions that run tests from different files
 extern void run_api_tests(void);
+extern void run_vector_tests(void);
 // Add declarations for other test suites here later
 
 // --- Main Test Runner ---
@@ -27,7 +27,8 @@ int main(void)
     // --- Run Test Suites ---
     printf("\n--- Running API Tests ---\n");
     run_api_tests();
-    // Call other test suite runners here later
+    printf("\n--- Running Vector Tests ---\n");
+    run_vector_tests();
 
     failures = UNITY_END(); // Returns number of failures
 

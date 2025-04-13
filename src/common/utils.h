@@ -24,11 +24,12 @@ int cpace_is_identity(const uint8_t point[CPACE_CRYPTO_POINT_BYTES]);
 
 /**
  * @brief Concatenates inputs for the Intermediate Session Key (ISK) derivation hash.
- * Format: label || sid || K || transcript
+ * Format follows draft-irtf-cfrg-cpace-13 B.1.5:
+ * lv(dsi_label) || lv(sid) || lv(K) || lv(Ya) || lv(ADa) || lv(Yb) || lv(ADb)
  * where transcript is Ya || ADa || Yb || ADb (or similar based on role/order)
  *
- * Note: This implementation assumes ADa and ADb are concatenated directly.
- * A more flexible implementation might use lv_cat for AD if needed.
+ * Note: This implementation uses single-byte length prefixes (lv). Lengths MUST be <= 255.
+ * It assumes symmetric AD based on the current EasyCPace API, duplicating the AD input.
  *
  * @param dsi_label The domain separation label (e.g., "CPACE_CRYPTO_DSI_ISK").
  * @param dsi_label_len Length of dsi_label.
@@ -42,14 +43,22 @@ int cpace_is_identity(const uint8_t point[CPACE_CRYPTO_POINT_BYTES]);
  * @param ADb Responder's associated data buffer.
  * @param ADb_len Length of ADb.
  * @param out Buffer to write the concatenated result.
- * @param out_size Size of the output buffer.
+ * @param out_capacity Size of the output buffer.
  * @return The total number of bytes written to 'out', or 0 on error (e.g., buffer too small).
  */
-size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label, size_t dsi_label_len, const uint8_t *sid,
-                                      size_t sid_len, const uint8_t K[CPACE_CRYPTO_POINT_BYTES],
-                                      const uint8_t Ya[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADa, size_t ADa_len,
-                                      const uint8_t Yb[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADb, size_t ADb_len,
-                                      uint8_t *out, size_t out_size);
+size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label,
+                                      size_t dsi_label_len,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t K[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t Ya[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t *ADa,
+                                      size_t ADa_len,
+                                      const uint8_t Yb[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t *ADb,
+                                      size_t ADb_len,
+                                      uint8_t *out,
+                                      size_t out_capacity);
 
 /**
  * @brief Constructs the input string for the generator hash (gen_str).
@@ -68,7 +77,13 @@ size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label, size_t dsi_label
  * @param out_size Size of the output buffer.
  * @return The total number of bytes written to 'out', or 0 on error (e.g., buffer too small, length overflow).
  */
-size_t cpace_construct_generator_hash_input(const uint8_t *prs, size_t prs_len, const uint8_t *ci, size_t ci_len,
-                                            const uint8_t *sid, size_t sid_len, uint8_t *out, size_t out_size);
+size_t cpace_construct_generator_hash_input(const uint8_t *prs,
+                                            size_t prs_len,
+                                            const uint8_t *ci,
+                                            size_t ci_len,
+                                            const uint8_t *sid,
+                                            size_t sid_len,
+                                            uint8_t *out,
+                                            size_t out_size);
 
 #endif // CPACE_UTILS_H

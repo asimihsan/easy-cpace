@@ -65,34 +65,80 @@ static uint8_t *append_data(uint8_t *dest, const uint8_t *src, size_t len, size_
     return dest; // Return original dest pointer for chaining (or NULL on error)
 }
 
+// Internal helper to append length-prefixed data (single byte length)
+// Returns updated dest pointer or NULL on error.
+static uint8_t *append_lv(uint8_t *dest, const uint8_t *src, size_t len, size_t *written, size_t capacity)
+{
+    if (!dest || len > 255) { // Check length fits in one byte
+        return NULL;
+    }
+    // Check capacity: need 1 byte for length + len bytes for data
+    if ((*written + 1 + len) > capacity) {
+        return NULL; // Error: buffer overflow
+    }
+    uint8_t u8_len = (uint8_t)len;
+    memcpy(dest + *written, &u8_len, 1);
+    *written += 1;
+    if (len > 0) { // Only copy data if length > 0
+        if (!src) {
+            return NULL; // Source must be valid if len > 0
+        }
+        memcpy(dest + *written, src, len);
+        *written += len;
+    }
+    return dest; // Return original dest pointer for chaining
+}
+
 // Construct input for ISK derivation hash
-size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label, size_t dsi_label_len, const uint8_t *sid,
-                                      size_t sid_len, const uint8_t K[CPACE_CRYPTO_POINT_BYTES],
-                                      const uint8_t Ya[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADa, size_t ADa_len,
-                                      const uint8_t Yb[CPACE_CRYPTO_POINT_BYTES], const uint8_t *ADb, size_t ADb_len,
-                                      uint8_t *out, size_t out_size)
+// Format: lv(dsi_label) || lv(sid) || lv(K) || lv(Ya) || lv(ADa) || lv(Yb) || lv(ADb)
+size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label,
+                                      size_t dsi_label_len,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t K[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t Ya[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t *ADa,
+                                      size_t ADa_len,
+                                      const uint8_t Yb[CPACE_CRYPTO_POINT_BYTES],
+                                      const uint8_t *ADb,
+                                      size_t ADb_len,
+                                      uint8_t *out,
+                                      size_t out_capacity)
 {
     size_t written = 0;
     uint8_t *current_out = out;
 
-    // Simplified transcript: Ya || ADa || Yb || ADb
-    // A more robust transcript might involve length prefixes (lv_cat) especially for AD
-    size_t transcript_len = CPACE_CRYPTO_POINT_BYTES + ADa_len + CPACE_CRYPTO_POINT_BYTES + ADb_len;
-    size_t required_size = dsi_label_len + sid_len + CPACE_CRYPTO_POINT_BYTES + transcript_len;
+    // Validate inputs and lengths (single-byte length limit)
+    if (dsi_label_len > 255 || sid_len > 255 || ADa_len > 255 || ADb_len > 255 ||
+        CPACE_CRYPTO_POINT_BYTES > 255 /* Should not happen */) {
+        return 0; // Invalid length for lv encoding
+    }
+    if (!K || !Ya || !Yb || !out || (dsi_label_len > 0 && !dsi_label) || (sid_len > 0 && !sid) ||
+        (ADa_len > 0 && !ADa) || (ADb_len > 0 && !ADb)) {
+        return 0; // Invalid argument
+    }
 
-    if (out_size < required_size) {
+    // Calculate required size: Sum of (1 + length) for each component
+    size_t required_size = (1 + dsi_label_len) + (1 + sid_len) + (1 + CPACE_CRYPTO_POINT_BYTES) +
+                           (1 + CPACE_CRYPTO_POINT_BYTES) + (1 + ADa_len) + (1 + CPACE_CRYPTO_POINT_BYTES) +
+                           (1 + ADb_len);
+
+    if (out_capacity < required_size) {
         return 0; // Buffer too small
     }
 
-    current_out = append_data(current_out, dsi_label, dsi_label_len, &written, out_size);
-    current_out = append_data(current_out, sid, sid_len, &written, out_size);
-    current_out = append_data(current_out, K, CPACE_CRYPTO_POINT_BYTES, &written, out_size);
-    current_out = append_data(current_out, Ya, CPACE_CRYPTO_POINT_BYTES, &written, out_size);
-    current_out = append_data(current_out, ADa, ADa_len, &written, out_size);
-    current_out = append_data(current_out, Yb, CPACE_CRYPTO_POINT_BYTES, &written, out_size);
-    current_out = append_data(current_out, ADb, ADb_len, &written, out_size);
+    // Append components using length-value encoding
+    current_out = append_lv(current_out, dsi_label, dsi_label_len, &written, out_capacity);
+    current_out = append_lv(current_out, sid, sid_len, &written, out_capacity);
+    current_out = append_lv(current_out, K, CPACE_CRYPTO_POINT_BYTES, &written, out_capacity);
+    current_out = append_lv(current_out, Ya, CPACE_CRYPTO_POINT_BYTES, &written, out_capacity);
+    current_out = append_lv(current_out, ADa, ADa_len, &written, out_capacity);
+    current_out = append_lv(current_out, Yb, CPACE_CRYPTO_POINT_BYTES, &written, out_capacity);
+    current_out = append_lv(current_out, ADb, ADb_len, &written, out_capacity);
 
     if (!current_out) { // Check if any append failed
+        // Should ideally cleanse 'out' buffer here if partially written
+        memset(out, 0, out_capacity); // Simple cleanse
         return 0;
     }
 
@@ -101,8 +147,14 @@ size_t cpace_construct_isk_hash_input(const uint8_t *dsi_label, size_t dsi_label
 }
 
 // Construct input string for generator hash
-size_t cpace_construct_generator_hash_input(const uint8_t *prs, size_t prs_len, const uint8_t *ci, size_t ci_len,
-                                            const uint8_t *sid, size_t sid_len, uint8_t *out, size_t out_size)
+size_t cpace_construct_generator_hash_input(const uint8_t *prs,
+                                            size_t prs_len,
+                                            const uint8_t *ci,
+                                            size_t ci_len,
+                                            const uint8_t *sid,
+                                            size_t sid_len,
+                                            uint8_t *out,
+                                            size_t out_size)
 {
     size_t written = 0;
     uint8_t *current_out = out;
@@ -132,8 +184,9 @@ size_t cpace_construct_generator_hash_input(const uint8_t *prs, size_t prs_len, 
     // ZPAD
     if (zpad_len > 0) {
         // Check capacity before memset (should be fine due to initial check)
-        if ((written + zpad_len) > out_size)
+        if ((written + zpad_len) > out_size) {
             return 0;
+        }
         memset(current_out + written, 0, zpad_len);
         written += zpad_len;
     }

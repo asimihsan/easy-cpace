@@ -1,14 +1,13 @@
-// tests/test_cpace_api.c
-#include "easy_cpace.h"
-#include "unity.h"
+#include "../include/easy_cpace.h"
+#include "vendor/unity/src/unity.h"
 #include <stdio.h>  // For printf in tests (optional)
 #include <string.h> // For memcmp
 
 // Test Inputs (use fixed values for deterministic tests)
 static const uint8_t TEST_PRS[] = "test_password";
 static const size_t TEST_PRS_LEN = sizeof(TEST_PRS) - 1;
-static const uint8_t TEST_SID[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                                   0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+static const uint8_t TEST_SID[] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 static const size_t TEST_SID_LEN = sizeof(TEST_SID);
 static const uint8_t TEST_CI[] = "TestChannelID";
 static const size_t TEST_CI_LEN = sizeof(TEST_CI) - 1;
@@ -79,8 +78,16 @@ void test_basic_initiator_responder_exchange_ok(void)
 
     // 2. Initiator Start
     printf("  Initiator: Starting...\n");
-    err = cpace_initiator_start(ctx_i, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
-                                TEST_AD_LEN, msg1);
+    err = cpace_initiator_start(ctx_i,
+                                TEST_PRS,
+                                TEST_PRS_LEN,
+                                TEST_SID,
+                                TEST_SID_LEN,
+                                TEST_CI,
+                                TEST_CI_LEN,
+                                TEST_AD,
+                                TEST_AD_LEN,
+                                msg1);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator start failed");
     // Basic check on msg1 (e.g., not all zeros - weak check)
     int is_zero = 1;
@@ -94,8 +101,18 @@ void test_basic_initiator_responder_exchange_ok(void)
 
     // 3. Responder Respond
     printf("  Responder: Responding...\n");
-    err = cpace_responder_respond(ctx_r, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
-                                  TEST_AD_LEN, msg1, msg2, isk_r);
+    err = cpace_responder_respond(ctx_r,
+                                  TEST_PRS,
+                                  TEST_PRS_LEN,
+                                  TEST_SID,
+                                  TEST_SID_LEN,
+                                  TEST_CI,
+                                  TEST_CI_LEN,
+                                  TEST_AD,
+                                  TEST_AD_LEN,
+                                  msg1,
+                                  msg2,
+                                  isk_r);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder respond failed");
     // Basic check on msg2
     is_zero = 1;
@@ -145,12 +162,28 @@ void test_invalid_state_transitions(void)
     ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_NOT_NULL(ctx);
     // First start should succeed
-    err = cpace_initiator_start(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
-                                TEST_AD_LEN, dummy_msg);
+    err = cpace_initiator_start(ctx,
+                                TEST_PRS,
+                                TEST_PRS_LEN,
+                                TEST_SID,
+                                TEST_SID_LEN,
+                                TEST_CI,
+                                TEST_CI_LEN,
+                                TEST_AD,
+                                TEST_AD_LEN,
+                                dummy_msg);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "First initiator start failed unexpectedly");
     // Second start should fail (state is now I_STARTED, not INITIALIZED)
-    err = cpace_initiator_start(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
-                                TEST_AD_LEN, dummy_msg);
+    err = cpace_initiator_start(ctx,
+                                TEST_PRS,
+                                TEST_PRS_LEN,
+                                TEST_SID,
+                                TEST_SID_LEN,
+                                TEST_CI,
+                                TEST_CI_LEN,
+                                TEST_AD,
+                                TEST_AD_LEN,
+                                dummy_msg);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Second initiator start should fail");
     cpace_ctx_free(ctx);
     ctx = NULL;
@@ -171,8 +204,18 @@ void test_invalid_state_transitions(void)
     TEST_ASSERT_NOT_NULL(ctx);
     uint8_t dummy_msg2[CPACE_PUBLIC_BYTES];
     // Try respond (should fail role check)
-    err = cpace_responder_respond(ctx, TEST_PRS, TEST_PRS_LEN, TEST_SID, TEST_SID_LEN, TEST_CI, TEST_CI_LEN, TEST_AD,
-                                  TEST_AD_LEN, dummy_msg, dummy_msg2, dummy_isk);
+    err = cpace_responder_respond(ctx,
+                                  TEST_PRS,
+                                  TEST_PRS_LEN,
+                                  TEST_SID,
+                                  TEST_SID_LEN,
+                                  TEST_CI,
+                                  TEST_CI_LEN,
+                                  TEST_AD,
+                                  TEST_AD_LEN,
+                                  dummy_msg,
+                                  dummy_msg2,
+                                  dummy_isk);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Initiator calling responder_respond should fail");
     cpace_ctx_free(ctx);
     ctx = NULL;

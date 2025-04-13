@@ -2,4 +2,18 @@ BasedOnStyle: LLVM
 ColumnLimit: 120
 IndentWidth: 4
 UseTab: Never
-BreakBeforeBraces: Stroustrup
+
+BreakBeforeBraces: Linux      # Linux style is closer to K&R
+InsertBraces: true            # Force braces for all blocks (requires clang-format 14+)
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+BinPackArguments: false       # Don't try to pack arguments onto as few lines as possible
+BinPackParameters: false      # Same for function parameters in declarations
+AlignAfterOpenBracket: Align  # Align arguments after open bracket
+AllowAllArgumentsOnNextLine: false  # Don't put all args on the next line if they fit

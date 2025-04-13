@@ -72,9 +72,16 @@ void cpace_core_ctx_free_internals(cpace_ctx_t *ctx);
  * @param msg1_out Output buffer for message Ya (CPACE_PUBLIC_BYTES).
  * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                         size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                         size_t ad_len, uint8_t msg1_out[CPACE_PUBLIC_BYTES]);
+cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx,
+                                         const uint8_t *prs,
+                                         size_t prs_len,
+                                         const uint8_t *sid,
+                                         size_t sid_len,
+                                         const uint8_t *ci,
+                                         size_t ci_len,
+                                         const uint8_t *ad,
+                                         size_t ad_len,
+                                         uint8_t msg1_out[CPACE_PUBLIC_BYTES]);
 
 /**
  * @brief Core logic for Responder Step 2.
@@ -94,10 +101,18 @@ cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, s
  * @param isk_out Output buffer for the ISK (CPACE_ISK_BYTES).
  * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                           size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                           size_t ad_len, const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
-                                           uint8_t msg2_out[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES]);
+cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx,
+                                           const uint8_t *prs,
+                                           size_t prs_len,
+                                           const uint8_t *sid,
+                                           size_t sid_len,
+                                           const uint8_t *ci,
+                                           size_t ci_len,
+                                           const uint8_t *ad,
+                                           size_t ad_len,
+                                           const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
+                                           uint8_t msg2_out[CPACE_PUBLIC_BYTES],
+                                           uint8_t isk_out[CPACE_ISK_BYTES]);
 
 /**
  * @brief Core logic for Initiator Step 3.
@@ -108,7 +123,8 @@ cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs,
  * @param isk_out Output buffer for the ISK (CPACE_ISK_BYTES).
  * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
+cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx,
+                                          const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
                                           uint8_t isk_out[CPACE_ISK_BYTES]);
 
 #endif // CPACE_CORE_H

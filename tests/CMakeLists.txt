@@ -4,10 +4,10 @@ cmake_minimum_required(VERSION 3.10)
 # --- Unity Test Framework ---
 # Add Unity source file (assuming it's in vendor/unity/src relative to this CMakeLists.txt)
 # Check if the source file exists first.
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c")
+if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c")
     message(FATAL_ERROR "Unity source not found in tests/vendor/unity/src. "
             "Please ensure the submodule is initialized: git submodule update --init --recursive")
-endif()
+endif ()
 
 add_library(unity STATIC
         vendor/unity/src/unity.c
@@ -27,10 +27,10 @@ target_include_directories(unity PUBLIC
 # --- Test Runner Executable ---
 add_executable(cpace_test_runner
         test_runner.c       # Main test runner entry point
-        test_cpace_api.c
-        test_runner.c
         test_cpace_api.c    # Test cases for the public API and flow
-        # Add other test suite files here later (e.g., test_cpace_core.c)
+        test_runner.c
+        test_cpace_api.c
+        test_cpace_vectors.c
 )
 
 # Link the test runner against our library and Unity

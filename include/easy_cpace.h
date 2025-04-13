@@ -111,8 +111,15 @@ void cpace_ctx_free(cpace_ctx_t *ctx);
  * bytes).
  * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                    size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad, size_t ad_len,
+cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx,
+                                    const uint8_t *prs,
+                                    size_t prs_len,
+                                    const uint8_t *sid,
+                                    size_t sid_len,
+                                    const uint8_t *ci,
+                                    size_t ci_len,
+                                    const uint8_t *ad,
+                                    size_t ad_len,
                                     uint8_t msg1_out[CPACE_PUBLIC_BYTES]);
 
 /**
@@ -141,10 +148,18 @@ cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t
  * @return CPACE_OK on success, or a cpace_error_t code on failure (e.g.,
  * CPACE_ERROR_PEER_KEY_INVALID).
  */
-cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                      size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                      size_t ad_len, const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
-                                      uint8_t msg2_out[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES]);
+cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx,
+                                      const uint8_t *prs,
+                                      size_t prs_len,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t *ci,
+                                      size_t ci_len,
+                                      const uint8_t *ad,
+                                      size_t ad_len,
+                                      const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
+                                      uint8_t msg2_out[CPACE_PUBLIC_BYTES],
+                                      uint8_t isk_out[CPACE_ISK_BYTES]);
 
 /**
  * @brief Step 3 (Initiator): Process msg2 (Yb), compute ISK.
@@ -160,7 +175,7 @@ cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size
  * @return CPACE_OK on success, or a cpace_error_t code on failure (e.g.,
  * CPACE_ERROR_PEER_KEY_INVALID).
  */
-cpace_error_t cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
-                                     uint8_t isk_out[CPACE_ISK_BYTES]);
+cpace_error_t
+cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES]);
 
 #endif // EASY_CPACE_H

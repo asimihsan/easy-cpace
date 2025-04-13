@@ -57,8 +57,15 @@ void cpace_ctx_free(cpace_ctx_t *ctx)
 
 // --- Protocol Steps Implementation ---
 
-cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                    size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad, size_t ad_len,
+cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx,
+                                    const uint8_t *prs,
+                                    size_t prs_len,
+                                    const uint8_t *sid,
+                                    size_t sid_len,
+                                    const uint8_t *ci,
+                                    size_t ci_len,
+                                    const uint8_t *ad,
+                                    size_t ad_len,
                                     uint8_t msg1_out[CPACE_PUBLIC_BYTES])
 {
     // --- Argument Validation ---
@@ -92,10 +99,18 @@ cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t
     return result;
 }
 
-cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                      size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                      size_t ad_len, const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
-                                      uint8_t msg2_out[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES])
+cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx,
+                                      const uint8_t *prs,
+                                      size_t prs_len,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t *ci,
+                                      size_t ci_len,
+                                      const uint8_t *ad,
+                                      size_t ad_len,
+                                      const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
+                                      uint8_t msg2_out[CPACE_PUBLIC_BYTES],
+                                      uint8_t isk_out[CPACE_ISK_BYTES])
 {
     // --- Argument Validation ---
     if (!ctx || !ctx->provider || !prs || !msg1_in || !msg2_out || !isk_out) {
@@ -116,14 +131,24 @@ cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size
     }
 
     // --- Call Core Logic ---
-    cpace_error_t result = cpace_core_responder_respond(ctx, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len,
-                                                        msg1_in, msg2_out, isk_out);
+    cpace_error_t result = cpace_core_responder_respond(ctx,
+                                                        prs,
+                                                        prs_len,
+                                                        sid,
+                                                        sid_len,
+                                                        ci,
+                                                        ci_len,
+                                                        ad,
+                                                        ad_len,
+                                                        msg1_in,
+                                                        msg2_out,
+                                                        isk_out);
 
     return result;
 }
 
-cpace_error_t cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
-                                     uint8_t isk_out[CPACE_ISK_BYTES])
+cpace_error_t
+cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES])
 {
     // --- Argument Validation ---
     if (!ctx || !ctx->provider || !msg2_in || !isk_out) {

@@ -10,8 +10,13 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t *isk_out);
 
 // Helper to safely duplicate input data into the context
-static cpace_error_t store_input_data(cpace_ctx_t *ctx, const uint8_t *sid, size_t sid_len, const uint8_t *ci,
-                                      size_t ci_len, const uint8_t *ad, size_t ad_len);
+static cpace_error_t store_input_data(cpace_ctx_t *ctx,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t *ci,
+                                      size_t ci_len,
+                                      const uint8_t *ad,
+                                      size_t ad_len);
 
 // --- Context Management Implementation ---
 
@@ -41,8 +46,7 @@ void cpace_core_ctx_free_internals(cpace_ctx_t *ctx)
         ctx->provider->misc_iface->cleanse(ctx->generator, sizeof(ctx->generator));
         ctx->provider->misc_iface->cleanse(ctx->own_pk, sizeof(ctx->own_pk));
         ctx->provider->misc_iface->cleanse(ctx->peer_pk, sizeof(ctx->peer_pk));
-    }
-    else {
+    } else {
         // Fallback to volatile memset if cleanse unavailable (not ideal)
         memset((void *volatile)ctx->ephemeral_sk, 0, sizeof(ctx->ephemeral_sk));
         memset((void *volatile)ctx->shared_secret_k, 0, sizeof(ctx->shared_secret_k));
@@ -67,8 +71,13 @@ void cpace_core_ctx_free_internals(cpace_ctx_t *ctx)
 // --- Helper Function Implementations ---
 
 // Safely duplicate input data into the context
-static cpace_error_t store_input_data(cpace_ctx_t *ctx, const uint8_t *sid, size_t sid_len, const uint8_t *ci,
-                                      size_t ci_len, const uint8_t *ad, size_t ad_len)
+static cpace_error_t store_input_data(cpace_ctx_t *ctx,
+                                      const uint8_t *sid,
+                                      size_t sid_len,
+                                      const uint8_t *ci,
+                                      size_t ci_len,
+                                      const uint8_t *ad,
+                                      size_t ad_len)
 {
     // Free potentially existing data first (shouldn't happen with current state machine)
     free(ctx->sid);
@@ -83,8 +92,9 @@ static cpace_error_t store_input_data(cpace_ctx_t *ctx, const uint8_t *sid, size
 
     if (sid_len > 0) {
         ctx->sid = (uint8_t *)malloc(sid_len);
-        if (!ctx->sid)
+        if (!ctx->sid) {
             return CPACE_ERROR_MALLOC;
+        }
         memcpy(ctx->sid, sid, sid_len);
         ctx->sid_len = sid_len;
     }
@@ -120,14 +130,22 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
     uint8_t gen_hash_output[CPACE_CRYPTO_FIELD_SIZE_BYTES];
 
     // Construct input for generator hash
-    size_t gen_input_len = cpace_construct_generator_hash_input(prs, prs_len, ctx->ci, ctx->ci_len, ctx->sid,
-                                                                ctx->sid_len, gen_input_buf, sizeof(gen_input_buf));
+    size_t gen_input_len = cpace_construct_generator_hash_input(prs,
+                                                                prs_len,
+                                                                ctx->ci,
+                                                                ctx->ci_len,
+                                                                ctx->sid,
+                                                                ctx->sid_len,
+                                                                gen_input_buf,
+                                                                sizeof(gen_input_buf));
     if (gen_input_len == 0) {
         return CPACE_ERROR_BUFFER_TOO_SMALL; // Or potentially invalid length args to constructor
     }
 
     // Hash the constructed input (output size is CPACE_CRYPTO_FIELD_SIZE_BYTES for map_to_curve)
-    if (ctx->provider->hash_iface->hash_digest(gen_input_buf, gen_input_len, gen_hash_output,
+    if (ctx->provider->hash_iface->hash_digest(gen_input_buf,
+                                               gen_input_len,
+                                               gen_hash_output,
                                                CPACE_CRYPTO_FIELD_SIZE_BYTES) != CRYPTO_OK) {
         return CPACE_ERROR_CRYPTO_FAIL;
     }
@@ -143,49 +161,71 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
     return CPACE_OK;
 }
 
-// Derive ISK = hash(DSI2 || SID || K || Ya || AD || Yb || AD)
+// Derive ISK = hash(lv(DSI) || lv(SID) || lv(K) || lv(Ya) || lv(ADa) || lv(Yb) || lv(ADb))
 // Assumes K, Ya, Yb, SID, AD are already in the context.
-// Ya/Yb order depends on a role.
+// Ya/Yb order depends on role. Uses symmetric AD assumption from API.
 static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t *isk_out)
 {
-    uint8_t isk_input_buf[1024];                      // Adjust size if needed
-    const uint8_t DSI_ISK[] = "CPACE_CRYPTO_DSI_ISK"; // Choose appropriate label
+    uint8_t isk_input_buf[1024]; // Adjust size if needed
+    size_t isk_input_len;
+    // Use the DSI label from the draft B.1.5
+    const uint8_t DSI_ISK[] = "CPace255_ISK";
     const uint8_t *ya_ptr;
     const uint8_t *yb_ptr;
 
-    // Determine which public key is Ya and which is Yb based on a role
+    // Determine which public key is Ya and which is Yb based on role
     if (ctx->role == CPACE_ROLE_INITIATOR) {
         ya_ptr = ctx->own_pk;
         yb_ptr = ctx->peer_pk;
-    }
-    else { // RESPONDER
+    } else { // RESPONDER
         ya_ptr = ctx->peer_pk;
         yb_ptr = ctx->own_pk;
     }
 
-    // Construct input for ISK hash
-    // Using the symmetric AD assumption: ADa = ADb = ctx->ad
-    size_t isk_input_len = cpace_construct_isk_hash_input(DSI_ISK, sizeof(DSI_ISK) - 1, ctx->sid, ctx->sid_len,
-                                                          ctx->shared_secret_k, ya_ptr, ctx->ad, ctx->ad_len, yb_ptr,
-                                                          ctx->ad, ctx->ad_len, isk_input_buf, sizeof(isk_input_buf));
+    // Construct input for ISK hash using the updated lv function
+    // Pass ctx->ad for both ADa and ADb, and ctx->ad_len for both lengths
+    isk_input_len = cpace_construct_isk_hash_input(DSI_ISK,
+                                                   sizeof(DSI_ISK) - 1,
+                                                   ctx->sid,
+                                                   ctx->sid_len,
+                                                   ctx->shared_secret_k, // K
+                                                   ya_ptr,               // Ya
+                                                   ctx->ad,
+                                                   ctx->ad_len, // ADa (using symmetric AD)
+                                                   yb_ptr,      // Yb
+                                                   ctx->ad,
+                                                   ctx->ad_len, // ADb (using symmetric AD)
+                                                   isk_input_buf,
+                                                   sizeof(isk_input_buf));
 
     if (isk_input_len == 0) {
+        // Could be buffer too small or invalid length argument to constructor
         return CPACE_ERROR_BUFFER_TOO_SMALL;
     }
 
-    // Hash the input to get the final ISK
+    // Hash the input to get the final ISK (CPACE_ISK_BYTES = 64 for SHA512)
     if (ctx->provider->hash_iface->hash_digest(isk_input_buf, isk_input_len, isk_out, CPACE_ISK_BYTES) != CRYPTO_OK) {
         return CPACE_ERROR_CRYPTO_FAIL;
     }
+
+    // Cleanse intermediate buffer
+    ctx->provider->misc_iface->cleanse(isk_input_buf, sizeof(isk_input_buf));
 
     return CPACE_OK;
 }
 
 // --- Core Protocol Step Implementations ---
 
-cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                         size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                         size_t ad_len, uint8_t msg1_out[CPACE_PUBLIC_BYTES])
+cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx,
+                                         const uint8_t *prs,
+                                         size_t prs_len,
+                                         const uint8_t *sid,
+                                         size_t sid_len,
+                                         const uint8_t *ci,
+                                         size_t ci_len,
+                                         const uint8_t *ad,
+                                         size_t ad_len,
+                                         uint8_t msg1_out[CPACE_PUBLIC_BYTES])
 {
 
     // Store SID, CI, AD (must happen before calculate_generator_g)
@@ -216,8 +256,7 @@ cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, s
         // Cleanse sk before returning
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         return CPACE_ERROR_CRYPTO_FAIL; // Internal crypto error
-    }
-    else if (mult_ret != CRYPTO_OK) {
+    } else if (mult_ret != CRYPTO_OK) {
         ctx->state_flags = CPACE_STATE_ERROR;
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         return CPACE_ERROR_CRYPTO_FAIL;
@@ -231,10 +270,18 @@ cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx, const uint8_t *prs, s
     return CPACE_OK;
 }
 
-cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs, size_t prs_len, const uint8_t *sid,
-                                           size_t sid_len, const uint8_t *ci, size_t ci_len, const uint8_t *ad,
-                                           size_t ad_len, const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
-                                           uint8_t msg2_out[CPACE_PUBLIC_BYTES], uint8_t isk_out[CPACE_ISK_BYTES])
+cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx,
+                                           const uint8_t *prs,
+                                           size_t prs_len,
+                                           const uint8_t *sid,
+                                           size_t sid_len,
+                                           const uint8_t *ci,
+                                           size_t ci_len,
+                                           const uint8_t *ad,
+                                           size_t ad_len,
+                                           const uint8_t msg1_in[CPACE_PUBLIC_BYTES],
+                                           uint8_t msg2_out[CPACE_PUBLIC_BYTES],
+                                           uint8_t isk_out[CPACE_ISK_BYTES])
 {
 
     // Store SID, CI, AD
@@ -266,8 +313,7 @@ cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs,
         ctx->state_flags = CPACE_STATE_ERROR;
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         return CPACE_ERROR_CRYPTO_FAIL;
-    }
-    else if (mult_ret_yb != CRYPTO_OK) {
+    } else if (mult_ret_yb != CRYPTO_OK) {
         ctx->state_flags = CPACE_STATE_ERROR;
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         return CPACE_ERROR_CRYPTO_FAIL;
@@ -281,8 +327,7 @@ cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs,
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         ctx->provider->misc_iface->cleanse(ctx->shared_secret_k, sizeof(ctx->shared_secret_k));
         return CPACE_ERROR_PEER_KEY_INVALID;
-    }
-    else if (mult_ret_k != CRYPTO_OK) {
+    } else if (mult_ret_k != CRYPTO_OK) {
         ctx->state_flags = CPACE_STATE_ERROR;
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         ctx->provider->misc_iface->cleanse(ctx->shared_secret_k, sizeof(ctx->shared_secret_k));
@@ -310,7 +355,8 @@ cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx, const uint8_t *prs,
     return CPACE_OK;
 }
 
-cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
+cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx,
+                                          const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
                                           uint8_t isk_out[CPACE_ISK_BYTES])
 {
 
@@ -326,8 +372,7 @@ cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_i
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         ctx->provider->misc_iface->cleanse(ctx->shared_secret_k, sizeof(ctx->shared_secret_k));
         return CPACE_ERROR_PEER_KEY_INVALID;
-    }
-    else if (mult_ret_k != CRYPTO_OK) {
+    } else if (mult_ret_k != CRYPTO_OK) {
         ctx->state_flags = CPACE_STATE_ERROR;
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         ctx->provider->misc_iface->cleanse(ctx->shared_secret_k, sizeof(ctx->shared_secret_k));

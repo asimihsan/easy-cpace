@@ -38,14 +38,16 @@ static BIGNUM *bn_p_minus_1_div_2 = NULL; // (p-1)/2 exponent for Legendre
 int ensure_elligator_constants(void)
 {
     // Check if already initialized (pointer check is sufficient)
-    if (bn_p != NULL)
+    if (bn_p != NULL) {
         return 1;
+    }
 
     int ok = 0;
     // Use a local context *only* for the duration of initialization
     BN_CTX *init_ctx = BN_CTX_new();
-    if (!init_ctx)
+    if (!init_ctx) {
         return 0; // Cannot even create context
+    }
 
     // Allocate global context used by map_to_curve operations
     elligator_bn_ctx = BN_CTX_new();
@@ -61,42 +63,55 @@ int ensure_elligator_constants(void)
     bn_p_minus_1_div_2 = BN_new();
 
     if (!elligator_bn_ctx || !bn_p || !bn_A || !bn_Z || !bn_c || !bn_one || !bn_two || !bn_p_plus_1_div_2 ||
-        !bn_p_minus_1_div_2)
+        !bn_p_minus_1_div_2) {
         goto cleanup; // BIGNUM or global ctx allocation failed
+    }
 
     // p = 2^255 - 19
-    if (!BN_lshift(bn_p, BN_value_one(), 255))
+    if (!BN_lshift(bn_p, BN_value_one(), 255)) {
         goto cleanup;
-    if (!BN_sub_word(bn_p, 19))
+    }
+    if (!BN_sub_word(bn_p, 19)) {
         goto cleanup;
+    }
 
     // A = 486662
-    if (!BN_set_word(bn_A, 486662))
+    if (!BN_set_word(bn_A, 486662)) {
         goto cleanup;
+    }
     // Z = 121665
-    if (!BN_set_word(bn_Z, 121665))
+    if (!BN_set_word(bn_Z, 121665)) {
         goto cleanup;
+    }
     // c = p - 1 (use init_ctx here)
-    if (!BN_sub_word(bn_c, 1))
+    if (!BN_sub_word(bn_c, 1)) {
         goto cleanup;
-    if (!BN_mod_add(bn_c, bn_c, bn_p, bn_p, init_ctx))
+    }
+    if (!BN_mod_add(bn_c, bn_c, bn_p, bn_p, init_ctx)) {
         goto cleanup; // Use init_ctx
+    }
     // one = 1
-    if (!BN_one(bn_one))
+    if (!BN_one(bn_one)) {
         goto cleanup;
+    }
     // two = 2
-    if (!BN_set_word(bn_two, 2))
+    if (!BN_set_word(bn_two, 2)) {
         goto cleanup;
+    }
     // (p+1)/2 (use init_ctx here)
-    if (!BN_add(bn_p_plus_1_div_2, bn_p, bn_one))
+    if (!BN_add(bn_p_plus_1_div_2, bn_p, bn_one)) {
         goto cleanup;
-    if (!BN_rshift1(bn_p_plus_1_div_2, bn_p_plus_1_div_2))
+    }
+    if (!BN_rshift1(bn_p_plus_1_div_2, bn_p_plus_1_div_2)) {
         goto cleanup;
+    }
     // (p-1)/2 (use init_ctx here)
-    if (!BN_sub(bn_p_minus_1_div_2, bn_p, bn_one))
+    if (!BN_sub(bn_p_minus_1_div_2, bn_p, bn_one)) {
         goto cleanup;
-    if (!BN_rshift1(bn_p_minus_1_div_2, bn_p_minus_1_div_2))
+    }
+    if (!BN_rshift1(bn_p_minus_1_div_2, bn_p_minus_1_div_2)) {
         goto cleanup;
+    }
 
     ok = 1; // Initialization successful
 
@@ -144,99 +159,125 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
     inv_xd = BN_CTX_get(ctx);
 
     // Check if allocations failed (BN_CTX_get returns NULL)
-    if (!inv_xd) // Check the last one allocated
+    if (!inv_xd) { // Check the last one allocated
         goto cleanup;
+    }
 
     // 1. Decode u from bytes (little-endian) and reduce mod p
-    if (!BN_lebin2bn(u_bytes, CPACE_CRYPTO_FIELD_SIZE_BYTES, u))
+    if (!BN_lebin2bn(u_bytes, CPACE_CRYPTO_FIELD_SIZE_BYTES, u)) {
         goto cleanup;
-    if (!BN_mod(u, u, bn_p, ctx))
+    }
+    if (!BN_mod(u, u, bn_p, ctx)) {
         goto cleanup; // u = u mod p
+    }
 
     // Handle u=0 case separately
     if (BN_is_zero(u)) {
         // x = A / (Z * -2) mod p. Need modular inverse.
         BIGNUM *den = BN_CTX_get(ctx); // Allocate in frame
-        if (!den)
+        if (!den) {
             goto cleanup;
-        if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx))
+        }
+        if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx)) {
             goto cleanup; // Z*2
-        if (!BN_mod_sub(den, bn_p, den, bn_p, ctx))
+        }
+        if (!BN_mod_sub(den, bn_p, den, bn_p, ctx)) {
             goto cleanup; // - (Z*2) mod p
-        if (!BN_mod_inverse(den, den, bn_p, ctx))
+        }
+        if (!BN_mod_inverse(den, den, bn_p, ctx)) {
             goto cleanup; // 1 / (-Z*2)
-        if (!BN_mod_mul(x, bn_A, den, bn_p, ctx))
+        }
+        if (!BN_mod_mul(x, bn_A, den, bn_p, ctx)) {
             goto cleanup; // A / (-Z*2)
+        }
         // den is auto-freed by BN_CTX_end
-    }
-    else {
+    } else {
         // Main Elligator 2 path
         // 1. tv1 = Z * u^2 mod p
-        if (!BN_mod_sqr(tv1, u, bn_p, ctx))
+        if (!BN_mod_sqr(tv1, u, bn_p, ctx)) {
             goto cleanup;
-        if (!BN_mod_mul(tv1, bn_Z, tv1, bn_p, ctx))
+        }
+        if (!BN_mod_mul(tv1, bn_Z, tv1, bn_p, ctx)) {
             goto cleanup;
+        }
 
         // 2. tv2 = tv1^2 mod p
-        if (!BN_mod_sqr(tv2, tv1, bn_p, ctx))
+        if (!BN_mod_sqr(tv2, tv1, bn_p, ctx)) {
             goto cleanup;
+        }
 
         // 3. xd = (tv1 + 1) * tv1 mod p = tv2 + tv1 mod p
-        if (!BN_mod_add(xd, tv2, tv1, bn_p, ctx))
+        if (!BN_mod_add(xd, tv2, tv1, bn_p, ctx)) {
             goto cleanup;
+        }
 
         // 4. xn = (A + tv1) * ( tv2 + A*tv1 ) mod p
         BIGNUM *xn_term1 = BN_CTX_get(ctx);
         BIGNUM *xn_term2 = BN_CTX_get(ctx);
-        if (!xn_term2)
+        if (!xn_term2) {
             goto cleanup; // Check last one
-        if (!BN_mod_add(xn_term1, bn_A, tv1, bn_p, ctx))
+        }
+        if (!BN_mod_add(xn_term1, bn_A, tv1, bn_p, ctx)) {
             goto cleanup;
-        if (!BN_mod_mul(xn_term2, bn_A, tv1, bn_p, ctx))
+        }
+        if (!BN_mod_mul(xn_term2, bn_A, tv1, bn_p, ctx)) {
             goto cleanup;
-        if (!BN_mod_add(xn_term2, tv2, xn_term2, bn_p, ctx))
+        }
+        if (!BN_mod_add(xn_term2, tv2, xn_term2, bn_p, ctx)) {
             goto cleanup;
-        if (!BN_mod_mul(xn, xn_term1, xn_term2, bn_p, ctx))
+        }
+        if (!BN_mod_mul(xn, xn_term1, xn_term2, bn_p, ctx)) {
             goto cleanup;
+        }
         // xn_term1, xn_term2 are auto-freed
 
         // 5. If xd == 0
         if (BN_is_zero(xd)) {
             BIGNUM *den = BN_CTX_get(ctx);
-            if (!den)
+            if (!den) {
                 goto cleanup;
-            if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx))
+            }
+            if (!BN_mod_mul(den, bn_Z, bn_two, bn_p, ctx)) {
                 goto cleanup; // Z*2
-            if (!BN_mod_sub(den, bn_p, den, bn_p, ctx))
+            }
+            if (!BN_mod_sub(den, bn_p, den, bn_p, ctx)) {
                 goto cleanup; // - (Z*2) mod p
-            if (!BN_mod_inverse(den, den, bn_p, ctx))
+            }
+            if (!BN_mod_inverse(den, den, bn_p, ctx)) {
                 goto cleanup; // 1 / (-Z*2)
-            if (!BN_mod_mul(x, bn_A, den, bn_p, ctx))
+            }
+            if (!BN_mod_mul(x, bn_A, den, bn_p, ctx)) {
                 goto cleanup; // A / (-Z*2)
                               // den auto-freed
-        }
-        else {
+            }
+        } else {
             // 6. gxd = legendre(xd, p) = xd^((p-1)/2) mod p
-            if (!BN_mod_exp(gxd, xd, bn_p_minus_1_div_2, bn_p, ctx))
+            if (!BN_mod_exp(gxd, xd, bn_p_minus_1_div_2, bn_p, ctx)) {
                 goto cleanup;
+            }
 
             // Calculate inverse needed for both cases: inv_xd = xd^-1 mod p
-            if (!BN_mod_inverse(inv_xd, xd, bn_p, ctx))
+            if (!BN_mod_inverse(inv_xd, xd, bn_p, ctx)) {
                 goto cleanup;
+            }
 
             // 7. If gxd == 1 (QR) -> x = xn / xd = xn * inv_xd mod p
             BIGNUM *x_qr = BN_CTX_get(ctx);
-            if (!x_qr)
+            if (!x_qr) {
                 goto cleanup;
-            if (!BN_mod_mul(x_qr, xn, inv_xd, bn_p, ctx))
+            }
+            if (!BN_mod_mul(x_qr, xn, inv_xd, bn_p, ctx)) {
                 goto cleanup;
+            }
 
             // 8. If gxd != 1 (NR or 0) -> x = c * xn / xd = -1 * xn * inv_xd mod p
             BIGNUM *x_nr = BN_CTX_get(ctx);
-            if (!x_nr)
+            if (!x_nr) {
                 goto cleanup;
-            if (!BN_mod_mul(x_nr, bn_c, x_qr, bn_p, ctx))
+            }
+            if (!BN_mod_mul(x_nr, bn_c, x_qr, bn_p, ctx)) {
                 goto cleanup; // x_nr = -x_qr
+            }
 
             // Select x based on gxd using constant-time conditional select if possible.
             // BN_is_one(gxd) determines the condition (1 if QR, 0 otherwise)
@@ -248,20 +289,22 @@ int openssl_elligator2_map_to_curve(uint8_t *out_point /* 32 bytes */, const uin
             // BN_conditional_copy(x, x_qr, x_nr, BN_is_one(gxd)); // If QR (gxd=1) copy x_qr, else copy x_nr
             // Let's use the simple conditional for now, aware of side channels.
             if (BN_is_one(gxd)) {
-                if (!BN_copy(x, x_qr))
+                if (!BN_copy(x, x_qr)) {
                     goto cleanup;
-            }
-            else {
-                if (!BN_copy(x, x_nr))
+                }
+            } else {
+                if (!BN_copy(x, x_nr)) {
                     goto cleanup;
+                }
             }
             // x_qr, x_nr auto-freed
         }
     }
 
     // Convert result x to little-endian bytes
-    if (BN_bn2lebinpad(x, out_point, CPACE_CRYPTO_POINT_BYTES) <= 0)
+    if (BN_bn2lebinpad(x, out_point, CPACE_CRYPTO_POINT_BYTES) <= 0) {
         goto cleanup;
+    }
 
     ok = 1; // Success
 

@@ -171,7 +171,7 @@ tsan: build-tsan test-tsan
 msan: build-msan test-msan
 
 # Run all CI checks (build, test, lint, benchmark)
-ci: lint build test run-benchmark
+ci: build lint test run-benchmark
 
 # Run CI with sanitizers (ASan + UBSan)
 ci-sanitizers: lint build-asan-ubsan test-asan-ubsan run-benchmark-asan-ubsan

@@ -1,4 +1,5 @@
 [tools]
+"go:github.com/google/addlicense" = "latest"
 clang-format = "latest"
 cmake = "latest"
 fd = "latest"
@@ -6,3 +7,6 @@ just = "latest"
 ninja = "latest"
 python = "prefix:3.12"
 uv = "latest"
+
+[settings]
+experimental = true

@@ -1,3 +1,12 @@
+/*
+ * Copyright 2025 Asim Ihsan
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
 #include "../include/easy_cpace.h"
 #include "../src/common/utils.h"                 // For direct testing of construct functions
 #include "../src/crypto_iface/crypto_provider.h" // For crypto interface types

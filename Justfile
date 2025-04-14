@@ -88,3 +88,9 @@ clean:
     rm -rf cmake-build-debug
 
 clean-build-test: clean build test
+
+copyright:
+    mise x -- bash -c 'fd -e c -e h -e py | xargs addlicense -f copyright.tmpl -c "Asim Ihsan" -v -s'
+
+copyright-check:
+    mise x -- bash -c 'fd -e c -e h -e py | xargs addlicense -f copyright.tmpl -c "Asim Ihsan" -v -s -check'

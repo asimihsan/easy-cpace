@@ -12,13 +12,13 @@ typedef struct crypto_provider_st crypto_provider_t;
 
 // --- Public Constants ---
 // Sizes specific to the CPACE-X25519-SHA512 suite
-#define CPACE_PUBLIC_BYTES 32      // Size of Ya / Yb messages
-#define CPACE_ISK_BYTES 64         // Size of the output Intermediate Session Key
+#define CPACE_PUBLIC_BYTES 32 // Size of Ya / Yb messages
+#define CPACE_ISK_BYTES 64    // Size of the output Intermediate Session Key
 
 // Maximum input sizes for embedded-friendly implementation
-#define CPACE_MAX_SID_LEN 64       // Maximum Session ID length
-#define CPACE_MAX_CI_LEN 64        // Maximum Channel ID length
-#define CPACE_MAX_AD_LEN 128       // Maximum Associated Data length
+#define CPACE_MAX_SID_LEN 64 // Maximum Session ID length
+#define CPACE_MAX_CI_LEN 64  // Maximum Channel ID length
+#define CPACE_MAX_AD_LEN 128 // Maximum Associated Data length
 
 // --- Roles ---
 typedef enum {
@@ -46,7 +46,7 @@ struct cpace_ctx_st {
     int state_flags;
 
     // Ephemeral keys (need cleansing)
-    uint8_t ephemeral_sk[CPACE_PUBLIC_BYTES]; 
+    uint8_t ephemeral_sk[CPACE_PUBLIC_BYTES];
     uint8_t shared_secret_k[CPACE_PUBLIC_BYTES]; // K = X25519(y_sk, peer_pk)
 
     // Protocol values

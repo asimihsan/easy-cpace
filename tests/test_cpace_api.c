@@ -42,7 +42,7 @@ void test_context_init_cleanup(void)
     cpace_ctx_t ctx_i;
     cpace_ctx_t ctx_r;
     cpace_error_t err;
-    
+
     err = cpace_ctx_init(&ctx_i, CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator context initialization failed");
 
@@ -58,7 +58,7 @@ void test_context_init_invalid_args(void)
 {
     cpace_ctx_t ctx;
     cpace_error_t err;
-    
+
     // Invalid role
     err = cpace_ctx_init(&ctx, (cpace_role_t)99, test_provider);
     TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with invalid role");
@@ -66,7 +66,7 @@ void test_context_init_invalid_args(void)
     // Invalid provider
     err = cpace_ctx_init(&ctx, CPACE_ROLE_INITIATOR, NULL);
     TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with NULL provider");
-    
+
     // NULL context
     err = cpace_ctx_init(NULL, CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with NULL context");

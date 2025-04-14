@@ -21,11 +21,11 @@ cpace_error_t cpace_ctx_init(cpace_ctx_t *ctx, cpace_role_t role, const crypto_p
     if (!ctx) {
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    
+
     if (!is_valid_provider(provider)) {
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    
+
     if (role != CPACE_ROLE_INITIATOR && role != CPACE_ROLE_RESPONDER) {
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
@@ -62,18 +62,18 @@ cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx,
         // Cannot set ctx state to error if ctx is NULL
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    
+
     // Check role and state
     if (ctx->role != CPACE_ROLE_INITIATOR) {
         ctx->state_flags = CPACE_STATE_ERROR; // Mark context as unusable
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     if (ctx->state_flags != CPACE_STATE_INITIALIZED) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     // Ensure provider is still valid (paranoid check)
     if (!is_valid_provider(ctx->provider)) {
         ctx->state_flags = CPACE_STATE_ERROR;
@@ -101,18 +101,18 @@ cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx,
     if (!ctx || !ctx->provider || !prs || !msg1_in || !msg2_out || !isk_out) {
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    
+
     // Check role and state
     if (ctx->role != CPACE_ROLE_RESPONDER) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     if (ctx->state_flags != CPACE_STATE_INITIALIZED) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     if (!is_valid_provider(ctx->provider)) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_ARGUMENT;
@@ -120,17 +120,17 @@ cpace_error_t cpace_responder_respond(cpace_ctx_t *ctx,
 
     // --- Call Core Logic ---
     return cpace_core_responder_respond(ctx,
-                                       prs,
-                                       prs_len,
-                                       sid,
-                                       sid_len,
-                                       ci,
-                                       ci_len,
-                                       ad,
-                                       ad_len,
-                                       msg1_in,
-                                       msg2_out,
-                                       isk_out);
+                                        prs,
+                                        prs_len,
+                                        sid,
+                                        sid_len,
+                                        ci,
+                                        ci_len,
+                                        ad,
+                                        ad_len,
+                                        msg1_in,
+                                        msg2_out,
+                                        isk_out);
 }
 
 cpace_error_t
@@ -140,19 +140,19 @@ cpace_initiator_finish(cpace_ctx_t *ctx, const uint8_t msg2_in[CPACE_PUBLIC_BYTE
     if (!ctx || !ctx->provider || !msg2_in || !isk_out) {
         return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    
+
     // Check role and state
     if (ctx->role != CPACE_ROLE_INITIATOR) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     // Must have called start previously
     if (ctx->state_flags != CPACE_STATE_I_STARTED) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_STATE;
     }
-    
+
     if (!is_valid_provider(ctx->provider)) {
         ctx->state_flags = CPACE_STATE_ERROR;
         return CPACE_ERROR_INVALID_ARGUMENT;

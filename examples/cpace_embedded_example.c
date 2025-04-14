@@ -6,7 +6,8 @@
  * Example usage of the embedded-friendly CPace API.
  * This example demonstrates how to use the library without dynamic memory allocation.
  */
-int main(void) {
+int main(void)
+{
     // Initialize the provider first (for Monocypher backend)
     cpace_error_t result = easy_cpace_monocypher_init();
     if (result != CPACE_OK) {
@@ -66,8 +67,8 @@ int main(void) {
     printf("Initiator generated message 1 (Ya)\n");
 
     // Step 2: Responder processes msg1, generates msg2 and ISK
-    result = cpace_responder_respond(&responder_ctx, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, 
-                                    msg1, msg2, isk_r);
+    result =
+        cpace_responder_respond(&responder_ctx, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, msg1, msg2, isk_r);
     if (result != CPACE_OK) {
         printf("Responder respond failed: %d\n", result);
         cpace_ctx_cleanup(&initiator_ctx);

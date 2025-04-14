@@ -27,12 +27,12 @@ cpace_error_t cpace_core_ctx_init(cpace_ctx_t *ctx, cpace_role_t role, const cry
 
     // Zero-initialize the entire context
     memset(ctx, 0, sizeof(cpace_ctx_t));
-    
+
     // Set provider and role
     ctx->provider = provider;
     ctx->role = role;
     ctx->state_flags = CPACE_STATE_INITIALIZED;
-    
+
     return CPACE_OK;
 }
 

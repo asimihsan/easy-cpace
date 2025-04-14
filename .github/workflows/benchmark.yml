@@ -1,19 +1,19 @@
 name: Benchmark Workflow
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
 
 jobs:
   benchmark:
     name: Run Benchmarks
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+    # Only run if the CI workflow was successful
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest  # Only run on Linux to simplify
 
     steps:
       - name: Checkout code
@@ -35,10 +35,8 @@ jobs:
           mise x -- uv sync
           
           # Install tools on Linux
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y clang-format clang-tidy
-          fi
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy
           
           # Install hyperfine in mise
           mise use hyperfine@latest
@@ -47,8 +45,8 @@ jobs:
         run: mkdir -p benchmarks
 
       # Build and run tests for the current commit
-      - name: Run CI for current commit
-        run: mise x -- just ci
+      - name: Build for current commit
+        run: mise x -- just build
 
       - name: Get parent commit
         id: get-parent
@@ -76,12 +74,12 @@ jobs:
       - name: Run benchmarks with hyperfine
         run: |
           mise x -- hyperfine --warmup 3 \
-            --export-markdown benchmarks/benchmark-results-${{ matrix.os }}.md \
+            --export-markdown benchmarks/benchmark-results.md \
             --command-name "Current commit" "./build/examples/benchmark" \
             --command-name "Parent commit" "./parent_commit/build/examples/benchmark"
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ matrix.os }}
-          path: benchmarks/benchmark-results-${{ matrix.os }}.md
+          name: benchmark-results
+          path: benchmarks/benchmark-results.md

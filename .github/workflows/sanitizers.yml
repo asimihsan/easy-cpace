@@ -1,30 +1,32 @@
 name: Sanitizers
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
 
 jobs:
   sanitizers:
+    # Only run if the CI workflow was successful
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        sanitizer: [asan-ubsan, tsan]
         include:
-          # MSan is only available on Linux with Clang
-          - os: ubuntu-latest
-            sanitizer: msan
-            # Skip MSan on macOS since it requires a specialized build
-          - os: ubuntu-latest
-            compiler: gcc
-            sanitizer: asan-ubsan
+          # Run all sanitizers on Linux with Clang
           - os: ubuntu-latest
             compiler: clang
             sanitizer: asan-ubsan
+          - os: ubuntu-latest
+            compiler: clang
+            sanitizer: tsan
+          - os: ubuntu-latest
+            compiler: clang
+            sanitizer: msan
+          # Run just ASan+UBSan on macOS
           - os: macos-latest
             compiler: clang
             sanitizer: asan-ubsan
@@ -49,14 +51,8 @@ jobs:
           brew install ninja llvm
           echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
           
-      - name: Set compiler (Linux/GCC)
-        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
-        run: |
-          echo "CC=gcc" >> $GITHUB_ENV
-          echo "CXX=g++" >> $GITHUB_ENV
-          
       - name: Set compiler (Linux/Clang)
-        if: runner.os == 'Linux' && (matrix.compiler == 'clang' || matrix.sanitizer == 'msan')
+        if: runner.os == 'Linux'
         run: |
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV

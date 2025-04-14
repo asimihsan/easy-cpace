@@ -1,6 +1,5 @@
 [tools]
 "go:github.com/google/addlicense" = "latest"
-clang-format = "latest"
 cmake = "latest"
 fd = "latest"
 hyperfine = "latest"

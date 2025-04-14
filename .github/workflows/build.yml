@@ -30,14 +30,7 @@ jobs:
 
       - name: Setup Environment
         run: |
-          mise trust
-          mise install
-          mise x -- uv venv
-          mise x -- uv sync
-          
-          # Install tools on Linux
-          sudo apt-get update
-          sudo apt-get install -y clang-format clang-tidy
+          mise x -- just setup
 
       - name: Run CI
         if: inputs.run_full_ci
@@ -70,10 +63,7 @@ jobs:
 
       - name: Setup Environment
         run: |
-          mise trust
-          mise install
-          mise x -- uv venv
-          mise x -- uv sync
+          mise x -- just setup
 
       - name: Run CI
         if: inputs.run_full_ci

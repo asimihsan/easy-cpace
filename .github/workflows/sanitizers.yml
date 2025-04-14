@@ -39,17 +39,16 @@ jobs:
       - name: Setup Mise
         uses: jdx/mise-action@v2
         
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
+      - name: Setup environment and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build clang-14 llvm-14
+          mise x -- just setup
           
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install ninja llvm
-          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          # Additional setup for sanitizers
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install -y clang-14 llvm-14
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          fi
           
       - name: Set compiler (Linux/Clang)
         if: runner.os == 'Linux'

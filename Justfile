@@ -2,10 +2,27 @@ default:
   @just --list
 
 setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
     mise trust
     mise install
     mise x -- uv venv
     mise x -- uv sync
+
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "Installing clang tools on Linux..."
+        sudo apt-get update
+        sudo apt-get install -y clang-format clang-tidy
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "Installing clang tools on macOS..."
+        brew install llvm
+        echo "LLVM tools installed at: $(brew --prefix llvm)/bin"
+        echo "Add this to your PATH if not already included"
+    else
+        echo "Unsupported platform for automatic clang tools installation"
+        echo "Please install clang-format and clang-tidy manually"
+    fi
 
 build:
     mise x -- cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON --debug-output -S . -B build -G Ninja
@@ -85,6 +102,19 @@ lint-fix:
 
     set -euo pipefail
 
+    # Check if clang-format and clang-tidy are installed
+    if ! command -v clang-format &> /dev/null; then
+        echo "⛔ Error: clang-format is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
+
+    if ! command -v clang-tidy &> /dev/null; then
+        echo "⛔ Error: clang-tidy is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
+
     if [[ "$OSTYPE" == "darwin"* ]]; then
         export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
     fi
@@ -111,6 +141,19 @@ lint:
     #!/usr/bin/env bash
 
     set -euo pipefail
+
+    # Check if clang-format and clang-tidy are installed
+    if ! command -v clang-format &> /dev/null; then
+        echo "⛔ Error: clang-format is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
+
+    if ! command -v clang-tidy &> /dev/null; then
+        echo "⛔ Error: clang-tidy is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
         export PATH="/opt/homebrew/opt/llvm/bin:$PATH"

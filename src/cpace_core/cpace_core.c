@@ -1,6 +1,6 @@
 #include "cpace_core.h"
-#include "../common/utils.h" // For construction helpers and is_identity
 #include "../common/debug.h" // For debug macros
+#include "../common/utils.h" // For construction helpers and is_identity
 #include <string.h>          // For memcpy, memset
 
 // --- Helper Function Prototypes ---
@@ -125,12 +125,12 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
     // Our hash_final implementation will handle the truncation
     uint8_t gen_hash_output[CPACE_CRYPTO_FIELD_SIZE_BYTES]; // 32 bytes
     cpace_error_t err = CPACE_OK;
-    
+
     DEBUG_ENTER("calculate_generator_g");
     DEBUG_PTR("ctx", ctx);
     DEBUG_PTR("prs", prs);
     DEBUG_LOG("prs_len = %zu", prs_len);
-    
+
     // Use incremental hashing to avoid large buffer allocation
     crypto_hash_ctx_t *hash_ctx = ctx->provider->hash_iface->hash_new();
     if (!hash_ctx) {
@@ -138,16 +138,16 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
         DEBUG_EXIT("calculate_generator_g", CPACE_ERROR_CRYPTO_FAIL);
         return CPACE_ERROR_CRYPTO_FAIL;
     }
-    
+
     // 1. Construct and hash DSI label
     uint8_t dsi_len = (uint8_t)CPACE_CRYPTO_DSI_LEN;
     if (ctx->provider->hash_iface->hash_update(hash_ctx, &dsi_len, 1) != CRYPTO_OK ||
-        ctx->provider->hash_iface->hash_update(hash_ctx, (const uint8_t*)CPACE_CRYPTO_DSI, 
-                                              CPACE_CRYPTO_DSI_LEN) != CRYPTO_OK) {
+        ctx->provider->hash_iface->hash_update(hash_ctx, (const uint8_t *)CPACE_CRYPTO_DSI, CPACE_CRYPTO_DSI_LEN) !=
+            CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;
         goto cleanup;
     }
-    
+
     // 2. Add PRS with length prefix
     if (prs_len > 255) {
         err = CPACE_ERROR_INVALID_ARGUMENT;
@@ -159,29 +159,29 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
         err = CPACE_ERROR_CRYPTO_FAIL;
         goto cleanup;
     }
-    
+
     // 3. Calculate and add ZPAD
     // Calculate length based on same formula as in cpace_construct_generator_hash_input
     size_t lv_dsi_len = 1 + CPACE_CRYPTO_DSI_LEN;
     size_t lv_prs_len = 1 + prs_len;
     size_t zpad_len = 0;
-    
+
     if ((lv_dsi_len + lv_prs_len) < (CPACE_CRYPTO_HASH_BLOCK_BYTES - 1)) {
         zpad_len = CPACE_CRYPTO_HASH_BLOCK_BYTES - 1 - lv_prs_len - lv_dsi_len;
     }
-    
+
     if (zpad_len > 255) {
         err = CPACE_ERROR_BUFFER_TOO_SMALL;
         goto cleanup;
     }
-    
+
     // Add ZPAD length and zeros
     uint8_t zpad_len_byte = (uint8_t)zpad_len;
     if (ctx->provider->hash_iface->hash_update(hash_ctx, &zpad_len_byte, 1) != CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;
         goto cleanup;
     }
-    
+
     // Add zero bytes one at a time to avoid buffer allocation
     uint8_t zero_byte = 0;
     for (size_t i = 0; i < zpad_len; i++) {
@@ -190,7 +190,7 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
             goto cleanup;
         }
     }
-    
+
     // 4. Add Channel ID if present
     if (ctx->ci_len > 0) {
         uint8_t ci_len_byte = (uint8_t)ctx->ci_len;
@@ -207,7 +207,7 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
             goto cleanup;
         }
     }
-    
+
     // 5. Add Session ID if present
     if (ctx->sid_len > 0) {
         uint8_t sid_len_byte = (uint8_t)ctx->sid_len;
@@ -224,22 +224,22 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
             goto cleanup;
         }
     }
-    
+
     // 6. Finalize hash
     // Note that SHA-512 produces 64 bytes, but we only need first 32 for map_to_curve
     uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES]; // Full 64-byte SHA-512 output
-    
+
     if (ctx->provider->hash_iface->hash_final(hash_ctx, full_hash) != CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;
         goto cleanup;
     }
-    
+
     // Copy only the first 32 bytes (CPACE_CRYPTO_FIELD_SIZE_BYTES) to gen_hash_output
     memcpy(gen_hash_output, full_hash, CPACE_CRYPTO_FIELD_SIZE_BYTES);
-    
+
     // Cleanse the full hash buffer
     ctx->provider->misc_iface->cleanse(full_hash, sizeof(full_hash));
-    
+
     // 7. Map hash output to curve point
     if (ctx->provider->ecc_iface->map_to_curve(ctx->generator, gen_hash_output) != CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;
@@ -252,7 +252,7 @@ cleanup:
     if (hash_ctx) {
         ctx->provider->hash_iface->hash_free(hash_ctx);
     }
-    
+
     DEBUG_EXIT("calculate_generator_g", err);
     return err;
 }
@@ -282,48 +282,49 @@ static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t
     if (!hash_ctx) {
         return CPACE_ERROR_CRYPTO_FAIL;
     }
-    
-    // Helper function to add a length-value encoded item to the hash
-    #define ADD_LV(data, data_len) do {                                             \
-        if ((data_len) > 255) {                                                     \
-            err = CPACE_ERROR_INVALID_ARGUMENT;                                     \
-            goto cleanup;                                                           \
-        }                                                                           \
-        uint8_t len_byte = (uint8_t)(data_len);                                     \
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &len_byte, 1) != CRYPTO_OK) { \
-            err = CPACE_ERROR_CRYPTO_FAIL;                                          \
-            goto cleanup;                                                           \
-        }                                                                           \
-        if ((data_len) > 0 && (data) != NULL) {                                     \
-            if (ctx->provider->hash_iface->hash_update(hash_ctx, (data), (data_len)) != CRYPTO_OK) { \
-                err = CPACE_ERROR_CRYPTO_FAIL;                                      \
-                goto cleanup;                                                       \
-            }                                                                       \
-        }                                                                           \
-    } while(0)
-    
+
+// Helper function to add a length-value encoded item to the hash
+#define ADD_LV(data, data_len)                                                                                         \
+    do {                                                                                                               \
+        if ((data_len) > 255) {                                                                                        \
+            err = CPACE_ERROR_INVALID_ARGUMENT;                                                                        \
+            goto cleanup;                                                                                              \
+        }                                                                                                              \
+        uint8_t len_byte = (uint8_t)(data_len);                                                                        \
+        if (ctx->provider->hash_iface->hash_update(hash_ctx, &len_byte, 1) != CRYPTO_OK) {                             \
+            err = CPACE_ERROR_CRYPTO_FAIL;                                                                             \
+            goto cleanup;                                                                                              \
+        }                                                                                                              \
+        if ((data_len) > 0 && (data) != NULL) {                                                                        \
+            if (ctx->provider->hash_iface->hash_update(hash_ctx, (data), (data_len)) != CRYPTO_OK) {                   \
+                err = CPACE_ERROR_CRYPTO_FAIL;                                                                         \
+                goto cleanup;                                                                                          \
+            }                                                                                                          \
+        }                                                                                                              \
+    } while (0)
+
     // Add each component with length-value encoding
     // 1. DSI label
     ADD_LV(DSI_ISK, sizeof(DSI_ISK) - 1);
-    
+
     // 2. Session ID
     ADD_LV(ctx->sid_buf, ctx->sid_len);
-    
+
     // 3. Shared secret K
     ADD_LV(ctx->shared_secret_k, CPACE_CRYPTO_POINT_BYTES);
-    
+
     // 4. Ya (initiator's public key)
     ADD_LV(ya_ptr, CPACE_CRYPTO_POINT_BYTES);
-    
+
     // 5. ADa (initiator's associated data)
     ADD_LV(ctx->ad_buf, ctx->ad_len);
-    
+
     // 6. Yb (responder's public key)
     ADD_LV(yb_ptr, CPACE_CRYPTO_POINT_BYTES);
-    
+
     // 7. ADb (responder's associated data - same as ADa in this API)
     ADD_LV(ctx->ad_buf, ctx->ad_len);
-    
+
     // Finalize hash to get ISK
     if (ctx->provider->hash_iface->hash_final(hash_ctx, isk_out) != CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;
@@ -331,11 +332,11 @@ static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t
     }
 
 cleanup:
-    #undef ADD_LV
+#undef ADD_LV
     if (hash_ctx) {
         ctx->provider->hash_iface->hash_free(hash_ctx);
     }
-    
+
     return err;
 }
 

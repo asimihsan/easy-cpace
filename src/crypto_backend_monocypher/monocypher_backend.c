@@ -1,6 +1,6 @@
 #include "../../include/easy_cpace.h"
-#include "../common/utils.h"                 // For cpace_is_identity, debug print
 #include "../common/debug.h"                 // For debug macros
+#include "../common/utils.h"                 // For cpace_is_identity, debug print
 #include "../crypto_iface/crypto_provider.h" // For struct definitions
 #include "monocypher-ed25519.h"              // For SHA512 needed for ISK
 #include "monocypher.h"
@@ -142,7 +142,7 @@ struct crypto_hash_ctx_st {
 static crypto_hash_ctx_t *monocypher_hash_new(void)
 {
     DEBUG_ENTER("monocypher_hash_new");
-    
+
     crypto_hash_ctx_t *ctx = malloc(sizeof(crypto_hash_ctx_t));
     if (ctx) {
         crypto_sha512_init(&ctx->sha512_ctx);
@@ -159,7 +159,7 @@ static void monocypher_hash_free(crypto_hash_ctx_t *ctx)
 {
     DEBUG_ENTER("monocypher_hash_free");
     DEBUG_PTR("ctx", ctx);
-    
+
     if (ctx) {
         // Cleanse the context before freeing
         crypto_wipe(ctx, sizeof(crypto_hash_ctx_t));
@@ -168,7 +168,7 @@ static void monocypher_hash_free(crypto_hash_ctx_t *ctx)
     } else {
         DEBUG_LOG("attempted to free NULL hash context");
     }
-    
+
     DEBUG_EXIT("monocypher_hash_free", 1);
 }
 
@@ -187,13 +187,13 @@ static int monocypher_hash_update(crypto_hash_ctx_t *ctx, const uint8_t *data, s
     DEBUG_PTR("ctx", ctx);
     DEBUG_PTR("data", data);
     DEBUG_LOG("len = %zu", len);
-    
+
     if (!ctx || (!data && len > 0)) {
         DEBUG_LOG("invalid args");
         DEBUG_EXIT("monocypher_hash_update", CRYPTO_ERROR);
         return CRYPTO_ERROR;
     }
-    
+
     crypto_sha512_update(&ctx->sha512_ctx, data, len);
     DEBUG_EXIT("monocypher_hash_update", CRYPTO_OK);
     return CRYPTO_OK;
@@ -204,20 +204,20 @@ static int monocypher_hash_final(crypto_hash_ctx_t *ctx, uint8_t *out)
     DEBUG_ENTER("monocypher_hash_final");
     DEBUG_PTR("ctx", ctx);
     DEBUG_PTR("out", out);
-    
+
     if (!ctx || !out) {
         DEBUG_LOG("invalid args");
         DEBUG_EXIT("monocypher_hash_final", CRYPTO_ERROR);
         return CRYPTO_ERROR;
     }
-    
+
     // SHA-512 always produces 64 bytes output
     // Note: The caller must ensure the out buffer has enough space (CPACE_CRYPTO_HASH_BYTES = 64)
     // For the generator hash, the caller will only use the first 32 bytes
-    
+
     // Always output the full 64 bytes - let the caller decide how much to use
     crypto_sha512_final(&ctx->sha512_ctx, out);
-    
+
     DEBUG_EXIT("monocypher_hash_final", CRYPTO_OK);
     return CRYPTO_OK;
 }
@@ -237,16 +237,16 @@ static int monocypher_hash_digest(const uint8_t *data, size_t len, uint8_t *out,
 
     // Compute full SHA-512 hash (64 bytes)
     uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES];
-    
+
     // Use direct Monocypher function for the one-shot case
     crypto_sha512(full_hash, data, len);
-    
+
     // Copy requested number of bytes to output
     memcpy(out, full_hash, out_len);
-    
+
     // Cleanse the full hash buffer
     crypto_wipe(full_hash, sizeof(full_hash));
-    
+
     return CRYPTO_OK;
 }
 

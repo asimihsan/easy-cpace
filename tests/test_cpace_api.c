@@ -111,7 +111,7 @@ void test_basic_initiator_responder_exchange_ok(void)
     printf("DEBUG: Initiator start completed with err=%d\n", err);
 #endif
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator start failed");
-    
+
     // Basic check on msg1 (e.g., not all zeros - weak check)
     int is_zero = 1;
     for (size_t i = 0; i < CPACE_PUBLIC_BYTES; ++i) {
@@ -142,7 +142,7 @@ void test_basic_initiator_responder_exchange_ok(void)
     printf("DEBUG: Responder respond completed with err=%d\n", err);
 #endif
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder respond failed");
-    
+
     // Basic check on msg2
     is_zero = 1;
     for (size_t i = 0; i < CPACE_PUBLIC_BYTES; ++i) {

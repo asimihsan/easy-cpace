@@ -43,8 +43,10 @@ lint-fix:
     # Also explicitly include Monocypher headers
     MONOCYPHER_INCLUDE="${PWD}/build/_deps/monocypher-src/src"
     MONOCYPHER_OPTIONAL_INCLUDE="${PWD}/build/_deps/monocypher-src/src/optional"
+    # Include path for easy_cpace.h
+    PROJECT_INCLUDE="${PWD}/include"
     # Run clang-tidy with all include paths
-    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE}
+    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE}
 
 lint:
     #!/usr/bin/env bash
@@ -71,8 +73,10 @@ lint:
     # Also explicitly include Monocypher headers
     MONOCYPHER_INCLUDE="${PWD}/build/_deps/monocypher-src/src"
     MONOCYPHER_OPTIONAL_INCLUDE="${PWD}/build/_deps/monocypher-src/src/optional"
+    # Include path for easy_cpace.h
+    PROJECT_INCLUDE="${PWD}/include"
     # Run clang-tidy with all include paths
-    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} 2>&1) || \
+    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} 2>&1) || \
     (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
 
 # Format a specific file

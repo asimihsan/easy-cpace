@@ -15,23 +15,6 @@
 #include <stdint.h>
 
 /**
- * @brief Constant-time memory comparison.
- * @param a Pointer to the first buffer.
- * @param b Pointer to the second buffer.
- * @param size Number of bytes to compare.
- * @return 0 if a and b are identical, non-zero otherwise.
- */
-int cpace_const_time_memcmp(const void *a, const void *b, size_t size);
-
-/**
- * @brief Helper to check if a point is the X25519 identity element (all zeros).
- * Uses constant-time compare.
- * @param point Pointer to the point buffer (CPACE_CRYPTO_POINT_BYTES bytes).
- * @return 1 if point is identity, 0 otherwise.
- */
-int cpace_is_identity(const uint8_t point[CPACE_CRYPTO_POINT_BYTES]);
-
-/**
  * @brief Concatenates inputs for the Intermediate Session Key (ISK) derivation hash.
  * Format follows draft-irtf-cfrg-cpace-13 B.1.5:
  * lv(dsi_label) || lv(sid) || lv(K) || lv(Ya) || lv(ADa) || lv(Yb) || lv(ADb)

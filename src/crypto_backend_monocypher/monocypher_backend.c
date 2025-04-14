@@ -279,6 +279,9 @@ static int monocypher_generate_scalar(uint8_t *out_scalar /* CPACE_CRYPTO_SCALAR
     return 1; // OK
 }
 
+// Static zero buffer for identity point comparison
+static const uint8_t zero_point[CPACE_CRYPTO_POINT_BYTES] = {0};
+
 static int monocypher_scalar_mult(uint8_t *out_point /* CPACE_CRYPTO_POINT_BYTES */,
                                   const uint8_t *scalar /* CPACE_CRYPTO_SCALAR_BYTES */,
                                   const uint8_t *base_point /* CPACE_CRYPTO_POINT_BYTES */)
@@ -288,7 +291,9 @@ static int monocypher_scalar_mult(uint8_t *out_point /* CPACE_CRYPTO_POINT_BYTES
     crypto_x25519(out_point, scalar, base_point);
 
     // Check if the result is the identity point (all zeros for X25519)
-    if (cpace_is_identity(out_point)) {
+    // Use the backend's constant-time comparison function directly.
+    // monocypher_const_time_memcmp returns 0 if equal.
+    if (monocypher_const_time_memcmp(out_point, zero_point, CPACE_CRYPTO_POINT_BYTES) == 0) {
 #ifdef CPACE_DEBUG_LOG
         printf("DEBUG: Monocypher backend detected identity point result in scalar_mult.\n");
         cpace_debug_print_hex("Scalar", scalar, CPACE_CRYPTO_SCALAR_BYTES);

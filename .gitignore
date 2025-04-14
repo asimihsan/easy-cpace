@@ -270,3 +270,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+# Ignore sanitizer reports
+sanitizer_reports/

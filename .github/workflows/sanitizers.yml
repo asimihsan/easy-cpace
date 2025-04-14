@@ -1,0 +1,94 @@
+name: Sanitizers
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  sanitizers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        sanitizer: [asan-ubsan, tsan]
+        include:
+          # MSan is only available on Linux with Clang
+          - os: ubuntu-latest
+            sanitizer: msan
+            # Skip MSan on macOS since it requires a specialized build
+          - os: ubuntu-latest
+            compiler: gcc
+            sanitizer: asan-ubsan
+          - os: ubuntu-latest
+            compiler: clang
+            sanitizer: asan-ubsan
+          - os: macos-latest
+            compiler: clang
+            sanitizer: asan-ubsan
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+        
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang-14 llvm-14
+          
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja llvm
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          
+      - name: Set compiler (Linux/GCC)
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: |
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+          
+      - name: Set compiler (Linux/Clang)
+        if: runner.os == 'Linux' && (matrix.compiler == 'clang' || matrix.sanitizer == 'msan')
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          
+      - name: Set compiler (macOS/Clang)
+        if: runner.os == 'macOS'
+        run: |
+          echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
+          
+      - name: Run AddressSanitizer + UBSan
+        if: matrix.sanitizer == 'asan-ubsan'
+        run: just asan-ubsan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:color=always
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always
+          
+      - name: Run ThreadSanitizer
+        if: matrix.sanitizer == 'tsan'
+        run: just tsan
+        env:
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:color=always
+          
+      - name: Run MemorySanitizer
+        if: matrix.sanitizer == 'msan'
+        run: just msan
+        env:
+          MSAN_OPTIONS: halt_on_error=1:color=always
+      
+      - name: Run Benchmark with Sanitizers
+        if: matrix.sanitizer == 'asan-ubsan'
+        run: just run-benchmark-asan-ubsan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:color=always
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always

@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L  /* For clock_gettime in Linux */
+
 #include "easy_cpace.h"
 #include <errno.h>
 #include <fcntl.h>

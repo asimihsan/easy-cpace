@@ -33,6 +33,17 @@ static void hexdump(const char* prefix, const uint8_t* data, size_t len) {
 - `just lint-fix` - Fix formatting and linting issues automatically
 - `just format-file <file>` - Format a specific file
 
+## Sanitizer Commands
+- `just build-asan` - Build with AddressSanitizer (ASan)
+- `just build-ubsan` - Build with UndefinedBehaviorSanitizer (UBSan)
+- `just build-tsan` - Build with ThreadSanitizer (TSan)
+- `just build-msan` - Build with MemorySanitizer (MSan), requires Clang
+- `just build-asan-ubsan` - Build with both ASan and UBSan
+- `just test-asan` - Run tests with ASan
+- `just sanitizers` - Run all sanitizers and generate reports in sanitizer_reports/
+- `just sanitizers-asan` - Run only ASan tests and generate report
+- `just ci-sanitizers` - Run CI checks with ASan+UBSan
+
 ## Python Helpers
 - Python scripts can be created using `hashlib` for independent hash verification:
 ```python

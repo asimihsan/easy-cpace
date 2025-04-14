@@ -16,10 +16,22 @@ option(CPACE_BUILD_TESTS "Build unit tests using Unity" ON)
 option(CPACE_BUILD_EXAMPLES "Build example programs" ON)
 option(CPACE_ENABLE_DEBUG_LOGGING "Enable debug printf statements" OFF) # Debug logging option
 
+# --- Sanitizer Options ---
+option(CPACE_ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(CPACE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(CPACE_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(CPACE_ENABLE_MSAN "Enable MemorySanitizer (Clang only)" OFF)
+option(CPACE_ENABLE_LSAN "Enable LeakSanitizer standalone (Linux only)" OFF)
+
 message(STATUS "Build configuration:")
 message(STATUS "  Build Tests:    ${CPACE_BUILD_TESTS}")
 message(STATUS "  Build Examples: ${CPACE_BUILD_EXAMPLES}")
 message(STATUS "  Backend:        Monocypher")
+message(STATUS "  ASan:           ${CPACE_ENABLE_ASAN}")
+message(STATUS "  UBSan:          ${CPACE_ENABLE_UBSAN}")
+message(STATUS "  TSan:           ${CPACE_ENABLE_TSAN}")
+message(STATUS "  MSan:           ${CPACE_ENABLE_MSAN}")
+message(STATUS "  LSan:           ${CPACE_ENABLE_LSAN}")
 
 # --- Fetch Dependencies ---
 include(FetchContent)
@@ -56,6 +68,73 @@ target_sources(monocypher_lib PRIVATE
     ${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.h
 )
 
+
+# --- Sanitizer Configuration ---
+set(SANITIZER_FLAGS "")
+set(SANITIZER_ENABLED FALSE)
+set(SANITIZER_INCOMPATIBLE_FLAGS FALSE)
+
+# Common options for sanitizer builds
+list(APPEND SANITIZER_FLAGS "-g" "-fno-omit-frame-pointer")
+
+if(CPACE_ENABLE_ASAN)
+    if(SANITIZER_INCOMPATIBLE_FLAGS)
+        message(FATAL_ERROR "ASan cannot be enabled with TSan or MSan")
+    endif()
+    message(STATUS "Configuring AddressSanitizer")
+    list(APPEND SANITIZER_FLAGS "-fsanitize=address")
+    set(SANITIZER_ENABLED TRUE)
+    set(SANITIZER_INCOMPATIBLE_FLAGS TRUE)
+endif()
+
+if(CPACE_ENABLE_UBSAN)
+    message(STATUS "Configuring UndefinedBehaviorSanitizer")
+    list(APPEND SANITIZER_FLAGS "-fsanitize=undefined")
+    set(SANITIZER_ENABLED TRUE)
+endif()
+
+if(CPACE_ENABLE_TSAN)
+    if(SANITIZER_INCOMPATIBLE_FLAGS)
+        message(FATAL_ERROR "TSan cannot be enabled with ASan or MSan")
+    endif()
+    message(STATUS "Configuring ThreadSanitizer")
+    list(APPEND SANITIZER_FLAGS "-fsanitize=thread")
+    set(SANITIZER_ENABLED TRUE)
+    set(SANITIZER_INCOMPATIBLE_FLAGS TRUE)
+endif()
+
+if(CPACE_ENABLE_MSAN)
+    if(SANITIZER_INCOMPATIBLE_FLAGS)
+        message(FATAL_ERROR "MSan cannot be enabled with ASan or TSan")
+    endif()
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "MSan requires Clang compiler")
+    endif()
+    message(STATUS "Configuring MemorySanitizer")
+    list(APPEND SANITIZER_FLAGS "-fsanitize=memory")
+    list(APPEND SANITIZER_FLAGS "-fsanitize-memory-track-origins=2")
+    set(SANITIZER_ENABLED TRUE)
+    set(SANITIZER_INCOMPATIBLE_FLAGS TRUE)
+endif()
+
+if(CPACE_ENABLE_LSAN)
+    if(NOT CMAKE_SYSTEM_NAME MATCHES "Linux")
+        message(FATAL_ERROR "Standalone LeakSanitizer is only available on Linux")
+    endif()
+    if(CPACE_ENABLE_ASAN)
+        message(WARNING "LeakSanitizer is already included in ASan, ignoring CPACE_ENABLE_LSAN")
+    else()
+        message(STATUS "Configuring LeakSanitizer")
+        list(APPEND SANITIZER_FLAGS "-fsanitize=leak")
+        set(SANITIZER_ENABLED TRUE)
+    endif()
+endif()
+
+if(SANITIZER_ENABLED)
+    message(STATUS "Adding sanitizer flags: ${SANITIZER_FLAGS}")
+    add_compile_options(${SANITIZER_FLAGS})
+    add_link_options(${SANITIZER_FLAGS})
+endif()
 
 # --- Add Source Directory ---
 # This will build the library (core + selected backends)

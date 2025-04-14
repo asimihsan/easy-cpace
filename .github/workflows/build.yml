@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build CPace
     runs-on: ${{ matrix.os }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.MISE_PAT }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]

@@ -27,6 +27,7 @@
 * Includes usage examples (`basic_exchange.c`, `cpace_embedded_example.c`).
 * Unit tests using the Unity framework (`test_cpace_api.c`, `test_cpace_vectors.c`).
 * Test vectors generated from the IETF draft specification.
+* Comprehensive sanitizer support (ASan, UBSan, TSan, MSan) for memory and behavior analysis.
 
 ## Getting Started
 
@@ -71,11 +72,20 @@ If you prefer not to use `just`, you can use CMake directly:
     # Optional: Configure build options (defaults are usually ON)
     # cmake -B build -S . -DCPACE_BUILD_TESTS=OFF -DCPACE_BUILD_EXAMPLES=OFF
     # cmake -B build -S . -DCPACE_ENABLE_DEBUG_LOGGING=ON # Enable verbose debug prints
+    
+    # Build with sanitizers
+    # cmake -B build-asan -S . -DCPACE_ENABLE_ASAN=ON     # AddressSanitizer
+    # cmake -B build-ubsan -S . -DCPACE_ENABLE_UBSAN=ON   # UndefinedBehaviorSanitizer
+    # cmake -B build-tsan -S . -DCPACE_ENABLE_TSAN=ON     # ThreadSanitizer
+    # cmake -B build-msan -S . -DCPACE_ENABLE_MSAN=ON -DCMAKE_C_COMPILER=clang # MemorySanitizer (requires Clang)
     ```
 
 2.  **Build the targets:**
     ```bash
     cmake --build build
+    
+    # Or for sanitizer builds:
+    # cmake --build build-asan
     ```
 
 3.  **Run examples/tests (from the project root):**
@@ -86,7 +96,24 @@ If you prefer not to use `just`, you can use CMake directly:
     cd build
     ctest --output-on-failure
     cd ..
+    
+    # Run tests with sanitizers
+    # cd build-asan
+    # ctest --output-on-failure
+    # cd ..
     ```
+
+4. **Run sanitizer tests:**
+   ```bash
+   # Using just targets (recommended)
+   just sanitizers
+   
+   # Or for specific sanitizers
+   just sanitizers-asan
+   just sanitizers-ubsan
+   ```
+
+For more detailed information on using sanitizers, see the [sanitizers documentation](docs/sanitizers.md).
 
 ## Usage Example
 

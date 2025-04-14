@@ -15,6 +15,9 @@ build-debug-logging:
 test:
     cd build && mise x -- ctest -V
 
+run-basic-exchange:
+    mise x -- ./build/examples/basic_exchange
+
 lint-fix:
     #!/usr/bin/env bash
 

@@ -1,0 +1,53 @@
+name: Build Workflow
+
+on:
+  workflow_call:
+    inputs:
+      run_full_ci:
+        description: 'Whether to run the full CI suite'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build CPace
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for benchmarking against previous commit
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+          install: true
+
+      - name: Setup Environment
+        run: |
+          mise trust
+          mise install
+          mise x -- uv venv
+          mise x -- uv sync
+          
+          # Install tools on Linux
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y clang-format clang-tidy
+          fi
+
+      - name: Run CI
+        if: inputs.run_full_ci
+        run: mise x -- just ci
+
+      - name: Build and Test Only
+        if: "!inputs.run_full_ci"
+        run: |
+          mise x -- just build
+          mise x -- just test

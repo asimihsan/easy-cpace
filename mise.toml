@@ -7,6 +7,7 @@ just = "latest"
 ninja = "latest"
 python = "prefix:3.12"
 uv = "latest"
+hyperfine = "latest"
 
 [settings]
 experimental = true

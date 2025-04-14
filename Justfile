@@ -21,6 +21,9 @@ test:
 run-basic-exchange:
     mise x -- ./build/examples/basic_exchange
 
+run-benchmark:
+    mise x -- ./build/examples/benchmark
+
 lint-fix:
     #!/usr/bin/env bash
 
@@ -94,3 +97,6 @@ copyright:
 
 copyright-check:
     mise x -- bash -c 'fd -e c -e h -e py | xargs addlicense -f copyright.tmpl -c "Asim Ihsan" -v -s -check'
+
+# Run all CI checks (build, test, lint, benchmark)
+ci: lint build test run-benchmark

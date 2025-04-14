@@ -18,6 +18,10 @@ target_link_libraries(basic_exchange PRIVATE easy_cpace)
 add_executable(cpace_embedded_example cpace_embedded_example.c)
 target_link_libraries(cpace_embedded_example PRIVATE easy_cpace)
 
+# Add the benchmark executable
+add_executable(benchmark benchmark.c)
+target_link_libraries(benchmark PRIVATE easy_cpace)
+
 # Optionally, ensure include directories are available if needed,
 # though linking should handle this via INTERFACE properties.
 # target_include_directories(basic_exchange PRIVATE
@@ -28,7 +32,9 @@ target_link_libraries(cpace_embedded_example PRIVATE easy_cpace)
 if(CPACE_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(basic_exchange PRIVATE CPACE_DEBUG_LOG)
     target_compile_definitions(cpace_embedded_example PRIVATE CPACE_DEBUG_LOG)
+    target_compile_definitions(benchmark PRIVATE CPACE_DEBUG_LOG)
 endif()
 
 message(STATUS "Configured basic_exchange example.")
 message(STATUS "Configured cpace_embedded_example example.")
+message(STATUS "Configured benchmark example.")

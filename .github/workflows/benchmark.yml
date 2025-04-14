@@ -1,0 +1,87 @@
+name: Benchmark Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for benchmarking against previous commit
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+          install: true
+
+      - name: Setup Environment
+        run: |
+          mise trust
+          mise install
+          mise x -- uv venv
+          mise x -- uv sync
+          
+          # Install tools on Linux
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y clang-format clang-tidy
+          fi
+          
+          # Install hyperfine in mise
+          mise use hyperfine@latest
+      
+      - name: Create benchmarks directory
+        run: mkdir -p benchmarks
+
+      # Build and run tests for the current commit
+      - name: Run CI for current commit
+        run: mise x -- just ci
+
+      - name: Get parent commit
+        id: get-parent
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "parent_sha=$(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }})" >> $GITHUB_OUTPUT
+          else
+            echo "parent_sha=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout parent commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.get-parent.outputs.parent_sha }}
+          clean: false
+          path: parent_commit
+
+      - name: Build parent commit
+        run: |
+          cd parent_commit
+          mise trust
+          mise install
+          mise x -- just build
+
+      - name: Run benchmarks with hyperfine
+        run: |
+          mise x -- hyperfine --warmup 3 \
+            --export-markdown benchmarks/benchmark-results-${{ matrix.os }}.md \
+            --command-name "Current commit" "./build/examples/benchmark" \
+            --command-name "Parent commit" "./parent_commit/build/examples/benchmark"
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-${{ matrix.os }}
+          path: benchmarks/benchmark-results-${{ matrix.os }}.md

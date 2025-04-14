@@ -2,8 +2,12 @@ FROM ubuntu:latest
 
 # Install dependencies
 RUN apt-get update && apt-get -y --no-install-recommends install \
-    sudo curl git ca-certificates build-essential \
-    cmake ninja-build clang-format clang-tidy \
+        build-essential \
+        ca-certificates \
+        clang-format \
+        curl \
+        git \
+        sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Mise environment

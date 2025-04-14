@@ -73,8 +73,9 @@ int main() {
      *      - Both ISKs should be identical if the protocol succeeds
      *      - The ISK is the cryptographic key that can be used for subsequent encrypted communication
      */
-    cpace_ctx_t *ctx_i = NULL;
-    cpace_ctx_t *ctx_r = NULL;
+    // Stack-allocated contexts
+    cpace_ctx_t ctx_i;
+    cpace_ctx_t ctx_r;
     uint8_t msg1[CPACE_PUBLIC_BYTES];   // First message (initiator → responder)
     uint8_t msg2[CPACE_PUBLIC_BYTES];   // Second message (responder → initiator)
     uint8_t isk_i[CPACE_ISK_BYTES];     // Initiator's derived shared key
@@ -98,18 +99,18 @@ int main() {
         goto cleanup; // Need to cleanup backend
     }
 
-    // --- Context Creation ---
-    printf("Creating Initiator context...\n");
-    ctx_i = cpace_ctx_new(CPACE_ROLE_INITIATOR, provider);
-    if (!ctx_i) {
-        fprintf(stderr, "Error: Failed to create Initiator context.\n");
+    // --- Context Initialization ---
+    printf("Initializing Initiator context...\n");
+    err = cpace_ctx_init(&ctx_i, CPACE_ROLE_INITIATOR, provider);
+    if (err != CPACE_OK) {
+        fprintf(stderr, "Error: Failed to initialize Initiator context: %d\n", err);
         goto cleanup;
     }
 
-    printf("Creating Responder context...\n");
-    ctx_r = cpace_ctx_new(CPACE_ROLE_RESPONDER, provider);
-    if (!ctx_r) {
-        fprintf(stderr, "Error: Failed to create Responder context.\n");
+    printf("Initializing Responder context...\n");
+    err = cpace_ctx_init(&ctx_r, CPACE_ROLE_RESPONDER, provider);
+    if (err != CPACE_OK) {
+        fprintf(stderr, "Error: Failed to initialize Responder context: %d\n", err);
         goto cleanup;
     }
 
@@ -139,7 +140,7 @@ int main() {
 
     // 1. Initiator Starts
     printf("Initiator: Starting protocol...\n");
-    err = cpace_initiator_start(ctx_i, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, msg1);
+    err = cpace_initiator_start(&ctx_i, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, msg1);
     if (err != CPACE_OK) {
         fprintf(stderr, "Error: Initiator start failed with code %d.\n", err);
         goto cleanup;
@@ -148,7 +149,7 @@ int main() {
 
     // 2. Responder Responds
     printf("Responder: Responding to Msg1...\n");
-    err = cpace_responder_respond(ctx_r, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, msg1, msg2, isk_r);
+    err = cpace_responder_respond(&ctx_r, prs, prs_len, sid, sid_len, ci, ci_len, ad, ad_len, msg1, msg2, isk_r);
     if (err != CPACE_OK) {
         fprintf(stderr, "Error: Responder respond failed with code %d.\n", err);
         goto cleanup;
@@ -158,7 +159,7 @@ int main() {
 
     // 3. Initiator Finishes
     printf("Initiator: Finishing protocol with Msg2...\n");
-    err = cpace_initiator_finish(ctx_i, msg2, isk_i);
+    err = cpace_initiator_finish(&ctx_i, msg2, isk_i);
     if (err != CPACE_OK) {
         fprintf(stderr, "Error: Initiator finish failed with code %d.\n", err);
         goto cleanup;
@@ -178,14 +179,12 @@ int main() {
 // --- Cleanup ---
 cleanup:
     printf("Cleaning up...\n");
-    if (ctx_i) {
-        cpace_ctx_free(ctx_i);
-        printf("Freed Initiator context.\n");
-    }
-    if (ctx_r) {
-        cpace_ctx_free(ctx_r);
-        printf("Freed Responder context.\n");
-    }
+    // Clean up the contexts (safe to call regardless of initialization state)
+    cpace_ctx_cleanup(&ctx_i);
+    printf("Cleaned up Initiator context.\n");
+    cpace_ctx_cleanup(&ctx_r);
+    printf("Cleaned up Responder context.\n");
+    
     // Always cleanup the backend if initialization was attempted
     easy_cpace_monocypher_cleanup();
     printf("Cleaned up Monocypher backend.\n");

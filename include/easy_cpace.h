@@ -10,15 +10,15 @@
 struct crypto_provider_st;
 typedef struct crypto_provider_st crypto_provider_t;
 
-// --- Opaque Context ---
-// Hide internal implementation details from the user.
-struct cpace_ctx_st;
-typedef struct cpace_ctx_st cpace_ctx_t;
-
 // --- Public Constants ---
 // Sizes specific to the CPACE-X25519-SHA512 suite
-#define CPACE_PUBLIC_BYTES 32 // Size of Ya / Yb messages
-#define CPACE_ISK_BYTES 64    // Size of the output Intermediate Session Key
+#define CPACE_PUBLIC_BYTES 32      // Size of Ya / Yb messages
+#define CPACE_ISK_BYTES 64         // Size of the output Intermediate Session Key
+
+// Maximum input sizes for embedded-friendly implementation
+#define CPACE_MAX_SID_LEN 64       // Maximum Session ID length
+#define CPACE_MAX_CI_LEN 64        // Maximum Channel ID length
+#define CPACE_MAX_AD_LEN 128       // Maximum Associated Data length
 
 // --- Roles ---
 typedef enum {
@@ -34,11 +34,35 @@ typedef enum {
     CPACE_ERROR_INVALID_STATE = -2,
     CPACE_ERROR_CRYPTO_FAIL = -3,
     CPACE_ERROR_PEER_KEY_INVALID = -4, // K == Identity
-    CPACE_ERROR_BUFFER_TOO_SMALL = -5, // Should not happen with fixed sizes
-    CPACE_ERROR_MALLOC = -6,
-    CPACE_ERROR_BACKEND_UNSUPPORTED = -7, // Kept for potential future use
+    CPACE_ERROR_BUFFER_TOO_SMALL = -5, // Happens when SID/CI/AD exceeds MAX_LEN
     CPACE_ERROR_RNG_FAILED = -8
 } cpace_error_t;
+
+// --- Context Structure ---
+// Making the context structure visible for stack/static allocation
+struct cpace_ctx_st {
+    const crypto_provider_t *provider;
+    cpace_role_t role;
+    int state_flags;
+
+    // Ephemeral keys (need cleansing)
+    uint8_t ephemeral_sk[CPACE_PUBLIC_BYTES]; 
+    uint8_t shared_secret_k[CPACE_PUBLIC_BYTES]; // K = X25519(y_sk, peer_pk)
+
+    // Protocol values
+    uint8_t generator[CPACE_PUBLIC_BYTES]; // g = map_to_curve(hash(DSI1||...))
+    uint8_t own_pk[CPACE_PUBLIC_BYTES];    // Ya or Yb (calculated)
+    uint8_t peer_pk[CPACE_PUBLIC_BYTES];   // Yb or Ya (received)
+
+    // Fixed-size buffers for inputs
+    uint8_t sid_buf[CPACE_MAX_SID_LEN];
+    size_t sid_len;
+    uint8_t ci_buf[CPACE_MAX_CI_LEN];
+    size_t ci_len;
+    uint8_t ad_buf[CPACE_MAX_AD_LEN];
+    size_t ad_len;
+};
+typedef struct cpace_ctx_st cpace_ctx_t;
 
 // --- Backend Provider Function ---
 /**
@@ -48,8 +72,6 @@ typedef enum {
 const crypto_provider_t *cpace_get_provider_monocypher(void);
 
 // --- Monocypher Backend Specific Initialization ---
-// These might be needed if the Monocypher backend requires setup/teardown.
-
 /**
  * @brief Initializes the Monocypher backend (if necessary).
  * Currently a no-op, but kept for API consistency.
@@ -65,19 +87,21 @@ void easy_cpace_monocypher_cleanup(void);
 
 // --- Context Management ---
 /**
- * @brief Create a new CPace context.
+ * @brief Initialize a user-provided CPace context.
+ * @param ctx Pointer to a user-allocated cpace_ctx_t structure to initialize.
  * @param role The role of this party (initiator or responder).
  * @param provider The cryptographic backend provider (must be from
  * cpace_get_provider_monocypher). Must not be NULL.
- * @return A new context handle, or NULL on failure (e.g., malloc error).
+ * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_ctx_t *cpace_ctx_new(cpace_role_t role, const crypto_provider_t *provider);
+cpace_error_t cpace_ctx_init(cpace_ctx_t *ctx, cpace_role_t role, const crypto_provider_t *provider);
 
 /**
- * @brief Free a CPace context and cleanse sensitive data.
- * @param ctx The context to free. Safe to pass NULL.
+ * @brief Clean up a CPace context and cleanse sensitive data.
+ * This function does NOT free the memory for ctx since it's user-allocated.
+ * @param ctx The context to clean up. Safe to pass NULL.
  */
-void cpace_ctx_free(cpace_ctx_t *ctx);
+void cpace_ctx_cleanup(cpace_ctx_t *ctx);
 
 // --- Protocol Steps ---
 /**
@@ -90,11 +114,11 @@ void cpace_ctx_free(cpace_ctx_t *ctx);
  * @param prs Password Related String.
  * @param prs_len Length of prs.
  * @param sid Session ID (optional, NULL if sid_len is 0).
- * @param sid_len Length of sid.
+ * @param sid_len Length of sid. Must be <= CPACE_MAX_SID_LEN.
  * @param ci Channel Identifier (optional, NULL if ci_len is 0).
- * @param ci_len Length of ci.
+ * @param ci_len Length of ci. Must be <= CPACE_MAX_CI_LEN.
  * @param ad Associated Data (optional, NULL if ad_len is 0).
- * @param ad_len Length of ad.
+ * @param ad_len Length of ad. Must be <= CPACE_MAX_AD_LEN.
  * @param msg1_out Output buffer for message Ya (must be CPACE_PUBLIC_BYTES
  * bytes).
  * @return CPACE_OK on success, or a cpace_error_t code on failure.
@@ -123,11 +147,11 @@ cpace_error_t cpace_initiator_start(cpace_ctx_t *ctx,
  * @param prs Password Related String.
  * @param prs_len Length of prs.
  * @param sid Session ID (optional, NULL if sid_len is 0).
- * @param sid_len Length of sid.
+ * @param sid_len Length of sid. Must be <= CPACE_MAX_SID_LEN.
  * @param ci Channel Identifier (optional, NULL if ci_len is 0).
- * @param ci_len Length of ci.
+ * @param ci_len Length of ci. Must be <= CPACE_MAX_CI_LEN.
  * @param ad Associated Data (optional, NULL if ad_len is 0).
- * @param ad_len Length of ad.
+ * @param ad_len Length of ad. Must be <= CPACE_MAX_AD_LEN.
  * @param msg1_in Input buffer containing message Ya (must be CPACE_PUBLIC_BYTES
  * bytes).
  * @param msg2_out Output buffer for message Yb (must be CPACE_PUBLIC_BYTES

@@ -37,48 +37,59 @@ void tearDown_api(void)
 // --- Test Cases ---
 // stdio.h and string.h included at the top
 
-void test_context_new_free(void)
+void test_context_init_cleanup(void)
 {
-    cpace_ctx_t *ctx_i = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL_MESSAGE(ctx_i, "Initiator context creation failed");
+    cpace_ctx_t ctx_i;
+    cpace_ctx_t ctx_r;
+    cpace_error_t err;
+    
+    err = cpace_ctx_init(&ctx_i, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator context initialization failed");
 
-    cpace_ctx_t *ctx_r = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
-    TEST_ASSERT_NOT_NULL_MESSAGE(ctx_r, "Responder context creation failed");
+    err = cpace_ctx_init(&ctx_r, CPACE_ROLE_RESPONDER, test_provider);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder context initialization failed");
 
-    cpace_ctx_free(ctx_i);
-    cpace_ctx_free(ctx_r);
-    cpace_ctx_free(NULL); // Should be safe
+    cpace_ctx_cleanup(&ctx_i);
+    cpace_ctx_cleanup(&ctx_r);
+    cpace_ctx_cleanup(NULL); // Should be safe
 }
 
-void test_context_new_invalid_args(void)
+void test_context_init_invalid_args(void)
 {
+    cpace_ctx_t ctx;
+    cpace_error_t err;
+    
     // Invalid role
-    cpace_ctx_t *ctx = cpace_ctx_new((cpace_role_t)99, test_provider);
-    TEST_ASSERT_NULL_MESSAGE(ctx, "Context creation should fail with invalid role");
+    err = cpace_ctx_init(&ctx, (cpace_role_t)99, test_provider);
+    TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with invalid role");
 
     // Invalid provider
-    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, NULL);
-    TEST_ASSERT_NULL_MESSAGE(ctx, "Context creation should fail with NULL provider");
+    err = cpace_ctx_init(&ctx, CPACE_ROLE_INITIATOR, NULL);
+    TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with NULL provider");
+    
+    // NULL context
+    err = cpace_ctx_init(NULL, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_NOT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Context initialization should fail with NULL context");
 }
 
 void test_basic_initiator_responder_exchange_ok(void)
 {
-    cpace_ctx_t *ctx_i = NULL;
-    cpace_ctx_t *ctx_r = NULL;
+    cpace_ctx_t ctx_i;
+    cpace_ctx_t ctx_r;
     uint8_t msg1[CPACE_PUBLIC_BYTES];
     uint8_t msg2[CPACE_PUBLIC_BYTES];
     uint8_t isk_i[CPACE_ISK_BYTES];
     uint8_t isk_r[CPACE_ISK_BYTES];
     cpace_error_t err;
 
-    // 1. Create contexts
-    ctx_i = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx_i);
-    ctx_r = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx_r);
+    // 1. Initialize contexts
+    err = cpace_ctx_init(&ctx_i, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator context initialization failed");
+    err = cpace_ctx_init(&ctx_r, CPACE_ROLE_RESPONDER, test_provider);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder context initialization failed");
 
     // 2. Initiator Start
-    err = cpace_initiator_start(ctx_i,
+    err = cpace_initiator_start(&ctx_i,
                                 TEST_PRS,
                                 TEST_PRS_LEN,
                                 TEST_SID,
@@ -100,7 +111,7 @@ void test_basic_initiator_responder_exchange_ok(void)
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Initiator msg1 should not be all zeros");
 
     // 3. Responder Respond
-    err = cpace_responder_respond(ctx_r,
+    err = cpace_responder_respond(&ctx_r,
                                   TEST_PRS,
                                   TEST_PRS_LEN,
                                   TEST_SID,
@@ -124,40 +135,39 @@ void test_basic_initiator_responder_exchange_ok(void)
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Responder msg2 should not be all zeros");
 
     // 4. Initiator Finish
-    err = cpace_initiator_finish(ctx_i, msg2, isk_i);
+    err = cpace_initiator_finish(&ctx_i, msg2, isk_i);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator finish failed");
 
     // 5. Verify ISKs match
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(isk_r, isk_i, CPACE_ISK_BYTES, "ISKs do not match!");
 
     // 6. Cleanup
-    cpace_ctx_free(ctx_i);
-    cpace_ctx_free(ctx_r);
+    cpace_ctx_cleanup(&ctx_i);
+    cpace_ctx_cleanup(&ctx_r);
 }
 
 void test_invalid_state_transitions(void)
 {
-    cpace_ctx_t *ctx = NULL;
+    cpace_ctx_t ctx;
     uint8_t dummy_msg[CPACE_PUBLIC_BYTES] = {0};
     uint8_t dummy_isk[CPACE_ISK_BYTES];
     cpace_error_t err;
 
     // --- Scenario 1: Initiator finish before start ---
-    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx);
-    err = cpace_initiator_finish(ctx, dummy_msg, dummy_isk);
+    err = cpace_ctx_init(&ctx, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_EQUAL_INT(CPACE_OK, err);
+    err = cpace_initiator_finish(&ctx, dummy_msg, dummy_isk);
     TEST_ASSERT_EQUAL_INT(CPACE_ERROR_INVALID_STATE, err);
     // Optional: Check if state is now ERROR (might need internal access or a helper)
-    // TEST_ASSERT_TRUE((ctx->state_flags & CPACE_STATE_ERROR) != 0); // Requires direct struct access - not ideal for
+    // TEST_ASSERT_TRUE((ctx.state_flags & CPACE_STATE_ERROR) != 0); // Requires direct struct access - not ideal for
     // API test
-    cpace_ctx_free(ctx);
-    ctx = NULL;
+    cpace_ctx_cleanup(&ctx);
 
     // --- Scenario 2: Initiator start twice ---
-    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx);
+    err = cpace_ctx_init(&ctx, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_EQUAL_INT(CPACE_OK, err);
     // First start should succeed
-    err = cpace_initiator_start(ctx,
+    err = cpace_initiator_start(&ctx,
                                 TEST_PRS,
                                 TEST_PRS_LEN,
                                 TEST_SID,
@@ -169,7 +179,7 @@ void test_invalid_state_transitions(void)
                                 dummy_msg);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "First initiator start failed unexpectedly");
     // Second start should fail (state is now I_STARTED, not INITIALIZED)
-    err = cpace_initiator_start(ctx,
+    err = cpace_initiator_start(&ctx,
                                 TEST_PRS,
                                 TEST_PRS_LEN,
                                 TEST_SID,
@@ -180,24 +190,22 @@ void test_invalid_state_transitions(void)
                                 TEST_AD_LEN,
                                 dummy_msg);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Second initiator start should fail");
-    cpace_ctx_free(ctx);
-    ctx = NULL;
+    cpace_ctx_cleanup(&ctx);
 
     // --- Scenario 3: Responder calls initiator function ---
-    ctx = cpace_ctx_new(CPACE_ROLE_RESPONDER, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx);
+    err = cpace_ctx_init(&ctx, CPACE_ROLE_RESPONDER, test_provider);
+    TEST_ASSERT_EQUAL_INT(CPACE_OK, err);
     // Try finish (should fail role check)
-    err = cpace_initiator_finish(ctx, dummy_msg, dummy_isk);
+    err = cpace_initiator_finish(&ctx, dummy_msg, dummy_isk);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Responder calling initiator_finish should fail");
-    cpace_ctx_free(ctx);
-    ctx = NULL;
+    cpace_ctx_cleanup(&ctx);
 
     // --- Scenario 4: Initiator calls responder function ---
-    ctx = cpace_ctx_new(CPACE_ROLE_INITIATOR, test_provider);
-    TEST_ASSERT_NOT_NULL(ctx);
+    err = cpace_ctx_init(&ctx, CPACE_ROLE_INITIATOR, test_provider);
+    TEST_ASSERT_EQUAL_INT(CPACE_OK, err);
     uint8_t dummy_msg2[CPACE_PUBLIC_BYTES];
     // Try respond (should fail role check)
-    err = cpace_responder_respond(ctx,
+    err = cpace_responder_respond(&ctx,
                                   TEST_PRS,
                                   TEST_PRS_LEN,
                                   TEST_SID,
@@ -210,8 +218,7 @@ void test_invalid_state_transitions(void)
                                   dummy_msg2,
                                   dummy_isk);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_ERROR_INVALID_STATE, err, "Initiator calling responder_respond should fail");
-    cpace_ctx_free(ctx);
-    ctx = NULL;
+    cpace_ctx_cleanup(&ctx);
 
     // Add more scenarios as needed...
 }

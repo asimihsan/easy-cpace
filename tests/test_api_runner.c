@@ -2,8 +2,8 @@
 #include "unity.h"
 
 // Import test function declarations
-extern void test_context_new_free(void);
-extern void test_context_new_invalid_args(void);
+extern void test_context_init_cleanup(void);
+extern void test_context_init_invalid_args(void);
 extern void test_basic_initiator_responder_exchange_ok(void);
 extern void test_invalid_state_transitions(void);
 
@@ -28,8 +28,8 @@ int main(void)
     UNITY_BEGIN();
 
     // Run all API tests with proper setup/teardown
-    RUN_TEST(test_context_new_free);
-    RUN_TEST(test_context_new_invalid_args);
+    RUN_TEST(test_context_init_cleanup);
+    RUN_TEST(test_context_init_invalid_args);
     RUN_TEST(test_basic_initiator_responder_exchange_ok);
     RUN_TEST(test_invalid_state_transitions);
 

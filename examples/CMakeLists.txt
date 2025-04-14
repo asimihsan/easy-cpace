@@ -14,6 +14,10 @@ add_executable(basic_exchange basic_exchange.c)
 # linking its own dependencies (like monocypher_lib) publicly.
 target_link_libraries(basic_exchange PRIVATE easy_cpace)
 
+# Add the embedded-friendly example executable
+add_executable(cpace_embedded_example cpace_embedded_example.c)
+target_link_libraries(cpace_embedded_example PRIVATE easy_cpace)
+
 # Optionally, ensure include directories are available if needed,
 # though linking should handle this via INTERFACE properties.
 # target_include_directories(basic_exchange PRIVATE
@@ -23,11 +27,8 @@ target_link_libraries(basic_exchange PRIVATE easy_cpace)
 # Add compile definition for debug logging if enabled globally
 if(CPACE_ENABLE_DEBUG_LOGGING)
     target_compile_definitions(basic_exchange PRIVATE CPACE_DEBUG_LOG)
+    target_compile_definitions(cpace_embedded_example PRIVATE CPACE_DEBUG_LOG)
 endif()
 
-
 message(STATUS "Configured basic_exchange example.")
-
-# Add more examples here following the same pattern:
-# add_executable(another_example another_example.c)
-# target_link_libraries(another_example PRIVATE easy_cpace)
+message(STATUS "Configured cpace_embedded_example example.")

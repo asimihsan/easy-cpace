@@ -1,6 +1,5 @@
 #include "cpace_core.h"
 #include "../common/utils.h" // For construction helpers and is_identity
-#include <stdlib.h>          // For malloc, free
 #include <string.h>          // For memcpy, memset
 
 // --- Helper Function Prototypes ---
@@ -9,7 +8,7 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 
 static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t *isk_out);
 
-// Helper to safely duplicate input data into the context
+// Helper to safely store input data into the context's fixed buffers
 static cpace_error_t store_input_data(cpace_ctx_t *ctx,
                                       const uint8_t *sid,
                                       size_t sid_len,
@@ -20,32 +19,39 @@ static cpace_error_t store_input_data(cpace_ctx_t *ctx,
 
 // --- Context Management Implementation ---
 
-cpace_ctx_t *cpace_core_ctx_new(void)
+cpace_error_t cpace_core_ctx_init(cpace_ctx_t *ctx, cpace_role_t role, const crypto_provider_t *provider)
 {
-    // Use calloc for zero-initialization
-    cpace_ctx_t *ctx = (cpace_ctx_t *)calloc(1, sizeof(cpace_ctx_t));
-    if (!ctx) {
-        return NULL;
+    if (!ctx || !provider) {
+        return CPACE_ERROR_INVALID_ARGUMENT;
     }
-    // The API layer will set provider and role after allocation
+
+    // Zero-initialize the entire context
+    memset(ctx, 0, sizeof(cpace_ctx_t));
+    
+    // Set provider and role
+    ctx->provider = provider;
+    ctx->role = role;
     ctx->state_flags = CPACE_STATE_INITIALIZED;
-    return ctx;
+    
+    return CPACE_OK;
 }
 
-void cpace_core_ctx_free_internals(cpace_ctx_t *ctx)
+void cpace_core_ctx_cleanup(cpace_ctx_t *ctx)
 {
     if (!ctx) {
         return;
     }
 
-    // Cleanse-sensitive material - check provider exists first
+    // Cleanse sensitive material - check provider exists first
     if (ctx->provider && ctx->provider->misc_iface && ctx->provider->misc_iface->cleanse) {
         ctx->provider->misc_iface->cleanse(ctx->ephemeral_sk, sizeof(ctx->ephemeral_sk));
         ctx->provider->misc_iface->cleanse(ctx->shared_secret_k, sizeof(ctx->shared_secret_k));
-        // Also cleanse g, pk? Maybe less critical but good practice
         ctx->provider->misc_iface->cleanse(ctx->generator, sizeof(ctx->generator));
         ctx->provider->misc_iface->cleanse(ctx->own_pk, sizeof(ctx->own_pk));
         ctx->provider->misc_iface->cleanse(ctx->peer_pk, sizeof(ctx->peer_pk));
+        ctx->provider->misc_iface->cleanse(ctx->sid_buf, sizeof(ctx->sid_buf));
+        ctx->provider->misc_iface->cleanse(ctx->ci_buf, sizeof(ctx->ci_buf));
+        ctx->provider->misc_iface->cleanse(ctx->ad_buf, sizeof(ctx->ad_buf));
     } else {
         // Fallback to volatile memset if cleanse unavailable (not ideal)
         memset((void *volatile)ctx->ephemeral_sk, 0, sizeof(ctx->ephemeral_sk));
@@ -53,24 +59,21 @@ void cpace_core_ctx_free_internals(cpace_ctx_t *ctx)
         memset((void *volatile)ctx->generator, 0, sizeof(ctx->generator));
         memset((void *volatile)ctx->own_pk, 0, sizeof(ctx->own_pk));
         memset((void *volatile)ctx->peer_pk, 0, sizeof(ctx->peer_pk));
+        memset((void *volatile)ctx->sid_buf, 0, sizeof(ctx->sid_buf));
+        memset((void *volatile)ctx->ci_buf, 0, sizeof(ctx->ci_buf));
+        memset((void *volatile)ctx->ad_buf, 0, sizeof(ctx->ad_buf));
     }
 
-    // Free duplicated input data
-    free(ctx->sid);
-    free(ctx->ci);
-    free(ctx->ad);
-
-    // Zero out the rest of the struct before freeing the memory itself
-    // (cleansing handles most sensitive parts)
-    memset(ctx, 0, sizeof(cpace_ctx_t));
-
-    // Note: The API layer (`cpace_api.c`) is responsible for free(ctx) itself.
-    // This function only handles the internals allocated *by* the core logic.
+    // Reset length fields and state
+    ctx->sid_len = 0;
+    ctx->ci_len = 0;
+    ctx->ad_len = 0;
+    ctx->state_flags = CPACE_STATE_INITIALIZED;
 }
 
 // --- Helper Function Implementations ---
 
-// Safely duplicate input data into the context
+// Store input data into fixed-size buffers in the context
 static cpace_error_t store_input_data(cpace_ctx_t *ctx,
                                       const uint8_t *sid,
                                       size_t sid_len,
@@ -79,47 +82,38 @@ static cpace_error_t store_input_data(cpace_ctx_t *ctx,
                                       const uint8_t *ad,
                                       size_t ad_len)
 {
-    // Free potentially existing data first (shouldn't happen with current state machine)
-    free(ctx->sid);
-    ctx->sid = NULL;
+    // Reset stored data lengths
     ctx->sid_len = 0;
-    free(ctx->ci);
-    ctx->ci = NULL;
     ctx->ci_len = 0;
-    free(ctx->ad);
-    ctx->ad = NULL;
     ctx->ad_len = 0;
 
+    // Copy Session ID if provided
     if (sid_len > 0) {
-        ctx->sid = (uint8_t *)malloc(sid_len);
-        if (!ctx->sid) {
-            return CPACE_ERROR_MALLOC;
+        if (sid_len > CPACE_MAX_SID_LEN) {
+            return CPACE_ERROR_BUFFER_TOO_SMALL;
         }
-        memcpy(ctx->sid, sid, sid_len);
+        memcpy(ctx->sid_buf, sid, sid_len);
         ctx->sid_len = sid_len;
     }
+
+    // Copy Channel ID if provided
     if (ci_len > 0) {
-        ctx->ci = (uint8_t *)malloc(ci_len);
-        if (!ctx->ci) {
-            free(ctx->sid);
-            ctx->sid = NULL;
-            return CPACE_ERROR_MALLOC;
+        if (ci_len > CPACE_MAX_CI_LEN) {
+            return CPACE_ERROR_BUFFER_TOO_SMALL;
         }
-        memcpy(ctx->ci, ci, ci_len);
+        memcpy(ctx->ci_buf, ci, ci_len);
         ctx->ci_len = ci_len;
     }
+
+    // Copy Associated Data if provided
     if (ad_len > 0) {
-        ctx->ad = (uint8_t *)malloc(ad_len);
-        if (!ctx->ad) {
-            free(ctx->sid);
-            ctx->sid = NULL;
-            free(ctx->ci);
-            ctx->ci = NULL;
-            return CPACE_ERROR_MALLOC;
+        if (ad_len > CPACE_MAX_AD_LEN) {
+            return CPACE_ERROR_BUFFER_TOO_SMALL;
         }
-        memcpy(ctx->ad, ad, ad_len);
+        memcpy(ctx->ad_buf, ad, ad_len);
         ctx->ad_len = ad_len;
     }
+
     return CPACE_OK;
 }
 
@@ -132,14 +126,14 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
     // Construct input for generator hash
     size_t gen_input_len = cpace_construct_generator_hash_input(prs,
                                                                 prs_len,
-                                                                ctx->ci,
+                                                                ctx->ci_len > 0 ? ctx->ci_buf : NULL,
                                                                 ctx->ci_len,
-                                                                ctx->sid,
+                                                                ctx->sid_len > 0 ? ctx->sid_buf : NULL,
                                                                 ctx->sid_len,
                                                                 gen_input_buf,
                                                                 sizeof(gen_input_buf));
     if (gen_input_len == 0) {
-        return CPACE_ERROR_BUFFER_TOO_SMALL; // Or potentially invalid length args to constructor
+        return CPACE_ERROR_BUFFER_TOO_SMALL;
     }
 
     // Hash the constructed input (output size is CPACE_CRYPTO_FIELD_SIZE_BYTES for map_to_curve)
@@ -183,23 +177,22 @@ static cpace_error_t derive_intermediate_key_isk(const cpace_ctx_t *ctx, uint8_t
     }
 
     // Construct input for ISK hash using the updated lv function
-    // Pass ctx->ad for both ADa and ADb, and ctx->ad_len for both lengths
+    // Pass ctx->ad_buf for both ADa and ADb, and ctx->ad_len for both lengths
     isk_input_len = cpace_construct_isk_hash_input(DSI_ISK,
                                                    sizeof(DSI_ISK) - 1,
-                                                   ctx->sid,
+                                                   ctx->sid_len > 0 ? ctx->sid_buf : NULL,
                                                    ctx->sid_len,
                                                    ctx->shared_secret_k, // K
                                                    ya_ptr,               // Ya
-                                                   ctx->ad,
+                                                   ctx->ad_len > 0 ? ctx->ad_buf : NULL,
                                                    ctx->ad_len, // ADa (using symmetric AD)
                                                    yb_ptr,      // Yb
-                                                   ctx->ad,
+                                                   ctx->ad_len > 0 ? ctx->ad_buf : NULL,
                                                    ctx->ad_len, // ADb (using symmetric AD)
                                                    isk_input_buf,
                                                    sizeof(isk_input_buf));
 
     if (isk_input_len == 0) {
-        // Could be buffer too small or invalid length argument to constructor
         return CPACE_ERROR_BUFFER_TOO_SMALL;
     }
 
@@ -227,7 +220,6 @@ cpace_error_t cpace_core_initiator_start(cpace_ctx_t *ctx,
                                          size_t ad_len,
                                          uint8_t msg1_out[CPACE_PUBLIC_BYTES])
 {
-
     // Store SID, CI, AD (must happen before calculate_generator_g)
     cpace_error_t err = store_input_data(ctx, sid, sid_len, ci, ci_len, ad, ad_len);
     if (err != CPACE_OK) {
@@ -283,7 +275,6 @@ cpace_error_t cpace_core_responder_respond(cpace_ctx_t *ctx,
                                            uint8_t msg2_out[CPACE_PUBLIC_BYTES],
                                            uint8_t isk_out[CPACE_ISK_BYTES])
 {
-
     // Store SID, CI, AD
     cpace_error_t err = store_input_data(ctx, sid, sid_len, ci, ci_len, ad, ad_len);
     if (err != CPACE_OK) {
@@ -359,7 +350,6 @@ cpace_error_t cpace_core_initiator_finish(cpace_ctx_t *ctx,
                                           const uint8_t msg2_in[CPACE_PUBLIC_BYTES],
                                           uint8_t isk_out[CPACE_ISK_BYTES])
 {
-
     // Store peer's public key Y_b
     memcpy(ctx->peer_pk, msg2_in, CPACE_PUBLIC_BYTES);
 

@@ -15,46 +15,22 @@
 // Note: R_RESPONDED and I_FINISHED imply shared secret was derived and potentially cleansed
 #define CPACE_STATE_ERROR 0x80 // Context encountered an unrecoverable error
 
-// --- Opaque Context Structure Definition ---
-// (Defined here, but treated as opaque outside this core module)
-struct cpace_ctx_st {
-    const crypto_provider_t *provider;
-    cpace_role_t role;
-    int state_flags;
-
-    // Ephemeral keys (need cleansing)
-    uint8_t ephemeral_sk[CPACE_CRYPTO_SCALAR_BYTES];
-    uint8_t shared_secret_k[CPACE_CRYPTO_POINT_BYTES]; // K = X25519(y_sk, peer_pk)
-
-    // Protocol values
-    uint8_t generator[CPACE_CRYPTO_POINT_BYTES]; // g = map_to_curve(hash(DSI1||...))
-    uint8_t own_pk[CPACE_PUBLIC_BYTES];          // Ya or Yb (calculated)
-    uint8_t peer_pk[CPACE_PUBLIC_BYTES];         // Yb or Ya (received)
-
-    // Stored Inputs (copied during start/respond)
-    uint8_t *sid;
-    size_t sid_len;
-    uint8_t *ci;
-    size_t ci_len;
-    uint8_t *ad; // Assumed symmetric for this API
-    size_t ad_len;
-};
-
-// --- Internal Core Functions (Called by cpace_api.c) ---
+// --- Internal Core Functions ---
 
 /**
- * @brief Allocates and initializes a new CPace context internals.
- * Does NOT store provider/role yet, API layer does that.
- * @return Pointer to the allocated context, or NULL on malloc failure.
+ * @brief Initialize a CPace context internals.
+ * @param ctx Context to initialize. Must not be NULL.
+ * @param role Role to assign to the context.
+ * @param provider Provider to use for crypto operations.
+ * @return CPACE_OK on success, or a cpace_error_t code on failure.
  */
-cpace_ctx_t *cpace_core_ctx_new(void);
+cpace_error_t cpace_core_ctx_init(cpace_ctx_t *ctx, cpace_role_t role, const crypto_provider_t *provider);
 
 /**
- * @brief Frees resources associated with the context internals (SID, CI, AD copies)
- * and cleanses sensitive key material.
- * @param ctx The context to free. MUST NOT be NULL. Provider must be valid.
+ * @brief Cleans up a CPace context's internals, cleansing sensitive key material.
+ * @param ctx The context to clean up. MUST NOT be NULL. Provider must be valid.
  */
-void cpace_core_ctx_free_internals(cpace_ctx_t *ctx);
+void cpace_core_ctx_cleanup(cpace_ctx_t *ctx);
 
 /**
  * @brief Core logic for Initiator Step 1.

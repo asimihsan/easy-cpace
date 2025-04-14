@@ -95,3 +95,4 @@ tests/generated_rfc_vectors.h
 vendor
 
 **/.DS_Store
+.cache

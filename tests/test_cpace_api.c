@@ -82,11 +82,19 @@ void test_basic_initiator_responder_exchange_ok(void)
     uint8_t isk_r[CPACE_ISK_BYTES];
     cpace_error_t err;
 
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Starting basic_initiator_responder_exchange test\n");
+#endif
+
     // 1. Initialize contexts
     err = cpace_ctx_init(&ctx_i, CPACE_ROLE_INITIATOR, test_provider);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator context initialization failed");
     err = cpace_ctx_init(&ctx_r, CPACE_ROLE_RESPONDER, test_provider);
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder context initialization failed");
+
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Contexts initialized\n");
+#endif
 
     // 2. Initiator Start
     err = cpace_initiator_start(&ctx_i,
@@ -99,7 +107,11 @@ void test_basic_initiator_responder_exchange_ok(void)
                                 TEST_AD,
                                 TEST_AD_LEN,
                                 msg1);
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Initiator start completed with err=%d\n", err);
+#endif
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator start failed");
+    
     // Basic check on msg1 (e.g., not all zeros - weak check)
     int is_zero = 1;
     for (size_t i = 0; i < CPACE_PUBLIC_BYTES; ++i) {
@@ -108,6 +120,9 @@ void test_basic_initiator_responder_exchange_ok(void)
             break;
         }
     }
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Initiator msg1 all zeros? %s\n", is_zero ? "yes" : "no");
+#endif
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Initiator msg1 should not be all zeros");
 
     // 3. Responder Respond
@@ -123,7 +138,11 @@ void test_basic_initiator_responder_exchange_ok(void)
                                   msg1,
                                   msg2,
                                   isk_r);
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Responder respond completed with err=%d\n", err);
+#endif
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Responder respond failed");
+    
     // Basic check on msg2
     is_zero = 1;
     for (size_t i = 0; i < CPACE_PUBLIC_BYTES; ++i) {
@@ -132,16 +151,28 @@ void test_basic_initiator_responder_exchange_ok(void)
             break;
         }
     }
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Responder msg2 all zeros? %s\n", is_zero ? "yes" : "no");
+#endif
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Responder msg2 should not be all zeros");
 
     // 4. Initiator Finish
     err = cpace_initiator_finish(&ctx_i, msg2, isk_i);
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Initiator finish completed with err=%d\n", err);
+#endif
     TEST_ASSERT_EQUAL_INT_MESSAGE(CPACE_OK, err, "Initiator finish failed");
 
     // 5. Verify ISKs match
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Comparing ISKs\n");
+#endif
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(isk_r, isk_i, CPACE_ISK_BYTES, "ISKs do not match!");
 
     // 6. Cleanup
+#ifdef CPACE_DEBUG_LOG
+    printf("DEBUG: Cleaning up contexts\n");
+#endif
     cpace_ctx_cleanup(&ctx_i);
     cpace_ctx_cleanup(&ctx_r);
 }

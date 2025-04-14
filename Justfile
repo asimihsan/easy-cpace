@@ -1,3 +1,6 @@
+default:
+  @just --list
+
 setup:
     mise trust
     mise install

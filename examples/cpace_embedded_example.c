@@ -1,4 +1,4 @@
-#include "../include/easy_cpace.h"
+#include <easy_cpace.h>
 #include <stdio.h>
 #include <string.h>
 

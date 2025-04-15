@@ -7,7 +7,11 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+#ifdef AMALGAMATION_BUILD
+#include <easy_cpace_amalgamated.h> // Use amalgamated header when defined
+#else
 #include <easy_cpace.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // For memcmp
@@ -37,7 +41,7 @@ static void print_hex(const char *label, const uint8_t *data, size_t len)
     printf("\n");
 }
 
-int main()
+int main(void)
 {
     printf("--- Starting EasyCPace Basic Exchange Example ---\n");
 

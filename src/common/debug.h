@@ -14,6 +14,9 @@
 #include <stdio.h>
 
 #ifdef CPACE_DEBUG_LOG
+// C99/C11 compatible variadic macro handling (avoids GNU ## extension)
+// Note: This might still produce warnings on some compilers if fmt is a string literal
+// and no args are passed, but it's more standard. Use ## for GCC/Clang compatibility.
 #define DEBUG_LOG(fmt, ...)                                                                                            \
     printf("DEBUG: " fmt "\n", ##__VA_ARGS__);                                                                         \
     fflush(stdout)
@@ -54,4 +57,4 @@
 #define DEBUG_HEX(name, data, len)
 #endif
 
-#endif /* CPACE_DEBUG_H */
+#endif /* End of CPACE_DEBUG_H */

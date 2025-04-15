@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -59,9 +58,9 @@ def strip_include_guards(content: str) -> str:
     # A basic removal strategy
     content = re.sub(r"^\s*#\s*ifndef\s+\w+\s*\n", "", content, flags=re.MULTILINE)
     content = re.sub(r"^\s*#\s*define\s+\w+\s*\n", "", content, flags=re.MULTILINE)
-    content = re.sub(
-        r"^\s*#\s*endif\s*(/\*.*?\*/)?\s*\n", "", content, flags=re.MULTILINE
-    )
+    # Remove the final #endif line, typically matching the include guard.
+    # Match #endif, optional space, optional C/C++ comment, optional space, newline, at the very end of the string.
+    content = re.sub(r"\s*#\s*endif\s*(?:/\*.*?\*/)?\s*(?://.*)?\s*\n?$", "", content)
     return content
 
 
@@ -87,6 +86,7 @@ def main():
     project_root = Path(__file__).parent.parent.resolve()
     output_dir = args.output_dir
     monocypher_dir = args.monocypher_dir
+    monocypher_dir = monocypher_dir.resolve()  # Resolve to absolute path
 
     output_h = output_dir / "easy_cpace_amalgamated.h"
     output_c = output_dir / "easy_cpace_amalgamated.c"
@@ -108,21 +108,46 @@ def main():
 
     internal_header_content = ""
     all_source_content = ""
-    standard_includes = set()
 
     # --- 1. Process internal headers (CPace + Monocypher) ---
     print("Processing internal headers...")
     all_internal_headers = [project_root / h for h in CPACE_INTERNAL_HEADERS] + [
         monocypher_dir / h for h in MONOCYPHER_HEADERS
     ]
+    # Create sets for quick lookup
+    cpace_internal_header_paths = {project_root / h for h in CPACE_INTERNAL_HEADERS}
 
     for header_path in all_internal_headers:
         print(f"  Processing header: {header_path.relative_to(project_root)}")
         content = get_file_content(header_path)
-        internal_header_content += strip_include_guards(content) + "\n\n"
-        # Find standard includes within headers
-        for match in STANDARD_INCLUDE_RE.finditer(content):
-            standard_includes.add(f"#include <{match.group(1)}>")
+        # Remove includes of the main public header from internal headers
+        content = re.sub(
+            r'^\s*#\s*include\s*".*easy_cpace\.h"', "", content, flags=re.MULTILINE
+        )
+        # Remove ALL internal includes ("...") from internal headers
+        content = INTERNAL_INCLUDE_RE.sub("", content)
+
+        # Only strip guards from OUR internal headers (excluding debug.h),
+        # not dependencies (Monocypher) or debug.h itself.
+        if header_path in cpace_internal_header_paths and header_path.name != "debug.h":
+            content = strip_include_guards(content)
+
+        internal_header_content += content + "\n\n"
+        # Standard includes are handled within the source files themselves
+
+    # --- Process Public API Header for inclusion in .c file ---
+    print(f"Processing public API header for .c file: {PUBLIC_API_HEADER}")
+    public_api_path = project_root / PUBLIC_API_HEADER
+    public_api_content_for_c = get_file_content(public_api_path)
+    # Collect standard includes needed by the public API for the .c file
+    api_standard_includes_for_c = set()
+    for match in STANDARD_INCLUDE_RE.finditer(public_api_content_for_c):
+        api_standard_includes_for_c.add(f"#include <{match.group(1)}>")
+    # Prepare public API content for .c: remove its original guards and standard includes
+    public_api_content_for_c = strip_include_guards(public_api_content_for_c)
+    public_api_content_for_c = STANDARD_INCLUDE_RE.sub("", public_api_content_for_c)
+    # Also remove internal includes just in case
+    public_api_content_for_c = INTERNAL_INCLUDE_RE.sub("", public_api_content_for_c)
 
     # --- 2. Process source files (CPace + Monocypher) ---
     print("Processing source files...")
@@ -135,9 +160,12 @@ def main():
         content = get_file_content(src_path)
         # Remove internal includes ("...") as their content is already gathered
         content = INTERNAL_INCLUDE_RE.sub("", content)
-        # Collect standard includes (<...>)
-        for match in STANDARD_INCLUDE_RE.finditer(content):
-            standard_includes.add(f"#include <{match.group(1)}>")
+        # Standard includes are handled within the source files themselves
+
+        # Resolve hash_reduce name collision in monocypher-ed25519.c
+        if src_path.name == "monocypher-ed25519.c":
+            print(f"    Renaming hash_reduce in {src_path.name}")
+            content = content.replace("hash_reduce", "monocypher_ed25519_hash_reduce")
 
         all_source_content += f"\n/* --- Start of content from {src_path.name} --- */\n"
         all_source_content += content.strip()  # Remove extra whitespace
@@ -164,12 +192,18 @@ def main():
             f_c.write("#define CPACE_DEBUG_LOG 1\n")
             f_c.write("#endif\n\n")
         # Platform defines are handled by #ifdefs within monocypher_backend.c
+        # Standard includes are handled within the source files themselves
 
-        # Write standard includes
-        f_c.write("/* Standard Library Includes */\n")
-        for inc in sorted(list(standard_includes)):
+        # Write standard includes needed by the public API definitions
+        f_c.write("/* Standard Includes Required by Public API */\n")
+        for inc in sorted(list(api_standard_includes_for_c)):
             f_c.write(f"{inc}\n")
         f_c.write("\n")
+
+        # Write Public API definitions first
+        f_c.write("/* --- Start Public API Definitions --- */\n\n")
+        f_c.write(public_api_content_for_c.strip())
+        f_c.write("\n\n/* --- End Public API Definitions --- */\n\n")
 
         # Write internal headers (definitions and prototypes)
         f_c.write("/* --- Start Internal Header Definitions --- */\n\n")
@@ -202,7 +236,7 @@ def main():
         f_h.write("#define EASY_CPACE_AMALGAMATED_H\n\n")
 
         # Add necessary standard includes from the public API header
-        f_h.write("/* Public API Includes */\n")
+        f_h.write("/* Public API Standard Includes */\n")
         api_standard_includes = set()
         for match in STANDARD_INCLUDE_RE.finditer(public_api_content):
             api_standard_includes.add(f"#include <{match.group(1)}>")
@@ -211,14 +245,15 @@ def main():
         f_h.write("\n")
 
         f_h.write("/* Public API Declarations */\n")
-        # Strip include guards from the public API content before pasting
-        public_api_content_stripped = strip_include_guards(public_api_content)
-        # Remove standard includes as they are handled above
-        public_api_content_stripped = STANDARD_INCLUDE_RE.sub(
-            "", public_api_content_stripped
-        )
+        # Prepare public API content: remove its original guards and standard includes
+        content_to_write = strip_include_guards(
+            public_api_content
+        )  # Remove original guards
+        content_to_write = STANDARD_INCLUDE_RE.sub(
+            "", content_to_write
+        )  # Remove standard includes
 
-        f_h.write(public_api_content_stripped.strip())
+        f_h.write(content_to_write.strip())
         f_h.write("\n\n#endif /* EASY_CPACE_AMALGAMATED_H */\n")
 
     print("\nAmalgamation complete.")

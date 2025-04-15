@@ -23,21 +23,39 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to query the API
           COMMIT_SHA: ${{ github.sha }}             # The commit SHA associated with the tag
         run: |
-          echo "Checking CI status for commit $COMMIT_SHA on main branch..."
+          echo "Checking status of all required workflows for commit $COMMIT_SHA on main branch..."
+          # Define the names of the workflows that MUST have succeeded for this commit on main
+          # Adjust these names if your workflow display names are different
+          REQUIRED_WORKFLOWS=("CI" "Sanitizers" "Benchmark Workflow" "Fuzzing")
+          ALL_CHECKS_PASSED=true
 
-          # Query for successful runs of the 'CI' workflow (ci.yml) on the 'main' branch for the specific commit
-          # We limit to 1 because we only need to know if at least one exists.
-          # We use jq to count the number of results returned.
-          success_count=$(gh run list --workflow ci.yml --branch main --commit "$COMMIT_SHA" --status success --limit 1 --json conclusion | jq 'length')
+          for workflow_name in "${REQUIRED_WORKFLOWS[@]}"; do
+            echo "Checking status for workflow: '$workflow_name'..."
+            # Query for completed, successful runs of the specific workflow on the main branch for the commit
+            # We need both status:completed and conclusion:success for certainty. Limit 1 is enough.
+            success_count=$(gh run list \
+              --workflow "$workflow_name" \
+              --branch main \
+              --commit "$COMMIT_SHA" \
+              --status completed \
+              --conclusion success \
+              --limit 1 \
+              --json conclusion | jq 'length')
 
-          echo "Found $success_count successful CI run(s) for commit $COMMIT_SHA on main."
+            if [[ "$success_count" -eq 0 ]]; then
+              echo "::error::Release blocked: No completed, successful run found for workflow '$workflow_name' for commit $COMMIT_SHA on the main branch." >&2
+              ALL_CHECKS_PASSED=false
+            else
+              echo "✅ Success found for workflow '$workflow_name'."
+            fi
+          done
 
-          if [[ "$success_count" -eq 0 ]]; then
-            echo "::error::Release blocked: No successful CI workflow run found for commit $COMMIT_SHA on the main branch." >&2
-            echo "::error::Please ensure the CI checks passed on the 'main' branch for this commit before tagging it for release." >&2
+          if [[ "$ALL_CHECKS_PASSED" == "false" ]]; then
+            echo "::error::One or more required workflow checks failed or were not found for commit $COMMIT_SHA on the main branch." >&2
+            echo "::error::Please ensure all checks (${REQUIRED_WORKFLOWS[*]}) passed successfully on the 'main' branch for this commit before tagging it for release." >&2
             exit 1 # Fail the workflow step
           else
-            echo "✅ CI checks passed for this commit on main. Proceeding with release."
+            echo "✅ All required workflow checks passed for commit $COMMIT_SHA on main. Proceeding with release."
           fi
 
       - name: Setup Mise

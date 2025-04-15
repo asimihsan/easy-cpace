@@ -79,16 +79,16 @@ jobs:
           echo "Packaging version ${VERSION} (SHA: ${SHORT_SHA})..."
           mkdir $RELEASE_DIR
 
-          # Copy amalgamated files with version in name
-          cp "${DIST_DIR}/${PROJECT_NAME}_amalgamated.c" "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}.c"
-          cp "${DIST_DIR}/${PROJECT_NAME}_amalgamated.h" "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}.h"
-
           # Create source tarball (using git archive is cleaner)
           git archive --format=tar --prefix="${PROJECT_NAME}-${VERSION}/" -o "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.tar" HEAD
           gzip "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.tar"
 
           # Create source zip (excluding build artifacts, .git, etc.)
           zip -r "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.zip" . -x ".git/*" -x "build*" -x "dist/*" -x "${RELEASE_DIR}/*" -x ".*" -x "__pycache__/*" -x "*.pyc" -x "venv/*" -x ".venv/*"
+
+          # Create zip containing only the amalgamated files (with original names inside)
+          # The zip file itself is versioned, but the contents are not.
+          (cd $DIST_DIR && zip "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-amalgamated.zip" "${PROJECT_NAME}_amalgamated.c" "${PROJECT_NAME}_amalgamated.h")
 
           echo "Assets packaged:"
           ls $RELEASE_DIR
@@ -102,13 +102,12 @@ jobs:
             Official release of EasyCPace version ${{ steps.git_info.outputs.tag }} (${{ steps.git_info.outputs.short_sha }}).
 
             **Artifacts:**
-            - Amalgamated source files (`easy_cpace-${{ steps.git_info.outputs.tag }}.c`/`.h`)
+            - Amalgamated source files archive (`easy_cpace-${{ steps.git_info.outputs.tag }}-amalgamated.zip`) containing `easy_cpace_amalgamated.c` and `easy_cpace_amalgamated.h`
             - Source code archive (`easy_cpace-${{ steps.git_info.outputs.tag }}-src.tar.gz`)
             - Source code archive (`easy_cpace-${{ steps.git_info.outputs.tag }}-src.zip`)
           draft: false
           prerelease: false # Set to true for pre-releases (e.g., v1.0.0-beta.1)
           files: |
-            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}.c
-            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}.h
             release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}-src.tar.gz
             release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}-src.zip
+            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}-amalgamated.zip

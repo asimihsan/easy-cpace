@@ -89,6 +89,9 @@ void test_basic_initiator_responder_exchange_ok(void)
     uint8_t msg2[CPACE_PUBLIC_BYTES];
     uint8_t isk_i[CPACE_ISK_BYTES];
     uint8_t isk_r[CPACE_ISK_BYTES];
+    // Initialize buffers to zero to avoid uninitialized memory in case of test failures
+    memset(isk_i, 0, CPACE_ISK_BYTES);
+    memset(isk_r, 0, CPACE_ISK_BYTES);
     cpace_error_t err;
 
 #ifdef CPACE_DEBUG_LOG
@@ -165,8 +168,7 @@ void test_basic_initiator_responder_exchange_ok(void)
 #endif
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Responder msg2 should not be all zeros");
 
-    // Clear isk_i buffer to ensure it doesn't contain uninitialized values
-    memset(isk_i, 0, CPACE_ISK_BYTES);
+    // The isk_i buffer was already initialized to zero at the start of the function
 
     // 4. Initiator Finish
     err = cpace_initiator_finish(&ctx_i, msg2, isk_i);

@@ -98,7 +98,7 @@ void test_vector_generator_mapping(void)
     uint8_t actual_gen_input[512] = {0}; // Buffer for constructed input, initialize to zero
     size_t actual_gen_input_len;
     uint8_t actual_hash[CPACE_CRYPTO_FIELD_SIZE_BYTES] = {0}; // Need 32 bytes for map_to_curve, initialize to zero
-    uint8_t actual_g[CPACE_CRYPTO_POINT_BYTES] = {0}; // Initialize to zero
+    uint8_t actual_g[CPACE_CRYPTO_POINT_BYTES] = {0};         // Initialize to zero
 
     // 1. Construct the generator input string using our implementation
     // (This is already verified by test_vector_generator_string_construction,

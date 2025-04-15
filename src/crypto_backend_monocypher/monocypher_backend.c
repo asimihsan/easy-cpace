@@ -74,9 +74,8 @@ static int monocypher_const_time_memcmp(const void *a, const void *b, size_t siz
         b_ptr += 16;
         size -= 16;
     }
-    // Handle remaining bytes (less than 16) - less critical for constant time?
-    // Fallback to standard memcmp for the remainder, or pad and use verify16?
-    // Padding seems safer.
+    // Handle remaining bytes (less than 16) using padding and crypto_verify16
+    // to ensure the entire comparison remains constant time.
     if (size > 0) {
         uint8_t padded_a[16] = {0};
         uint8_t padded_b[16] = {0};

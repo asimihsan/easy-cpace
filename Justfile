@@ -140,7 +140,14 @@ lint-fix:
     # Include path for easy_cpace.h
     PROJECT_INCLUDE="${PWD}/include"
     # Run clang-tidy with all include paths
-    fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE}
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # On macOS, add system includes path
+        SDK_PATH=$(xcrun --show-sdk-path)
+        fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} -isystem${SDK_PATH}/usr/include
+    else
+        # Regular path for other platforms
+        fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -fix -fix-errors -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE}
+    fi
 
 lint:
     #!/usr/bin/env bash
@@ -188,8 +195,16 @@ lint:
     # Include path for easy_cpace.h
     PROJECT_INCLUDE="${PWD}/include"
     # Run clang-tidy with all include paths
-    output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} 2>&1) || \
-    (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # On macOS, add system includes path
+        SDK_PATH=$(xcrun --show-sdk-path)
+        output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} -isystem${SDK_PATH}/usr/include 2>&1) || \
+        (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
+    else
+        # Regular path for other platforms
+        output=$(fd -e c -e h -E "build/" -E "third_party/" . -x clang-tidy -p=build {} -- -std=c99 -I${PROJECT_INCLUDE} -isystem${UNITY_INCLUDE} -isystem${UNITY_HELPERS_INCLUDE} -isystem${MONOCYPHER_INCLUDE} -isystem${MONOCYPHER_OPTIONAL_INCLUDE} 2>&1) || \
+        (echo "⛔ Linting issues found:"; echo "$output"; exit 1)
+    fi
 
 # Format a specific file
 format-file file:

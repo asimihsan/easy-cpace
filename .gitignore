@@ -91,6 +91,7 @@ CMakeUserPresets.json
 .aider*
 .jj
 build/
+build-clion/
 tests/generated_rfc_vectors.h
 vendor
 

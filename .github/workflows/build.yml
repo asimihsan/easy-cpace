@@ -28,6 +28,19 @@ jobs:
           experimental: true
           install: true
 
+      - name: Cache Homebrew LLVM
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/Homebrew/downloads
+            /opt/homebrew/Cellar/llvm
+            /opt/homebrew/Cellar/z3
+            /opt/homebrew/opt/llvm
+            /opt/homebrew/opt/z3
+          key: ${{ runner.os }}-brew-llvm-${{ hashFiles('Justfile') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-llvm-
+
       - name: Setup Environment
         run: |
           mise x -- just setup
@@ -60,6 +73,19 @@ jobs:
         with:
           experimental: true
           install: true
+
+      - name: Cache Homebrew LLVM
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/Homebrew/downloads
+            /opt/homebrew/Cellar/llvm
+            /opt/homebrew/Cellar/z3
+            /opt/homebrew/opt/llvm
+            /opt/homebrew/opt/z3
+          key: ${{ runner.os }}-brew-llvm-${{ hashFiles('Justfile') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-llvm-
 
       - name: Setup Environment
         run: |

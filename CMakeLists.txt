@@ -83,6 +83,24 @@ if(CPACE_ENABLE_ASAN)
     endif()
     message(STATUS "Configuring AddressSanitizer")
     list(APPEND SANITIZER_FLAGS "-fsanitize=address")
+    
+    # Add suppression file for macOS
+    if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/sanitizer_reports")
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/sanitizer_reports/macos_leak_suppressions.txt")
+            file(WRITE "${CMAKE_SOURCE_DIR}/sanitizer_reports/macos_leak_suppressions.txt"
+                "# Suppress macOS Objective-C runtime leaks that are false positives\n"
+                "leak:*libobjc.A.dylib*\n"
+                "leak:*libsystem_malloc.dylib*\n"
+                "leak:*libdispatch.dylib*\n"
+                "leak:*CoreFoundation*\n"
+                "leak:*Foundation*\n"
+            )
+        endif()
+        message(STATUS "Using leak suppressions for macOS")
+        set(ENV{LSAN_OPTIONS} "suppressions=${CMAKE_SOURCE_DIR}/sanitizer_reports/macos_leak_suppressions.txt")
+    endif()
+    
     set(SANITIZER_ENABLED TRUE)
     set(SANITIZER_INCOMPATIBLE_FLAGS TRUE)
 endif()

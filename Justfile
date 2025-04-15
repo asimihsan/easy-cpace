@@ -249,3 +249,9 @@ sanitizers-msan:
 # Run sanitizers with verbose output
 sanitizers-verbose:
     ./scripts/run_sanitizers.sh --verbose
+    
+# macOS-specific sanitizer test with suppression for libobjc/Darwin framework leaks
+# This is required because on macOS, the Objective-C runtime and Darwin frameworks
+# have expected memory leaks that are not actual leaks in the application code
+macos-asan-test:
+    ./scripts/run_macos_asan.sh

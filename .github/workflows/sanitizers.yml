@@ -63,10 +63,16 @@ jobs:
           echo "CXX=$(brew --prefix llvm)/bin/clang++" >> $GITHUB_ENV
           
       - name: Run AddressSanitizer + UBSan
-        if: matrix.sanitizer == 'asan-ubsan'
+        if: matrix.sanitizer == 'asan-ubsan' && runner.os != 'macOS'
         run: just asan-ubsan
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:color=always
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always
+          
+      - name: Run AddressSanitizer + UBSan on macOS
+        if: matrix.sanitizer == 'asan-ubsan' && runner.os == 'macOS'
+        run: just macos-asan-test
+        env:
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always
           
       - name: Run ThreadSanitizer
@@ -81,9 +87,17 @@ jobs:
         env:
           MSAN_OPTIONS: halt_on_error=1:color=always
       
-      - name: Run Benchmark with Sanitizers
-        if: matrix.sanitizer == 'asan-ubsan'
+      - name: Run Benchmark with Sanitizers (Linux)
+        if: matrix.sanitizer == 'asan-ubsan' && runner.os != 'macOS'
         run: just run-benchmark-asan-ubsan
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:color=always
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always
+          
+      - name: Run Benchmark with Sanitizers (macOS)
+        if: matrix.sanitizer == 'asan-ubsan' && runner.os == 'macOS'
+        run: |
+          export LSAN_OPTIONS="suppressions=$(pwd)/sanitizer_reports/macos_leak_suppressions.txt"
+          just run-benchmark-asan-ubsan
+        env:
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:color=always

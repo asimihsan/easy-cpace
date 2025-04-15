@@ -45,5 +45,7 @@ int main(void)
     printf("Cleaning up Monocypher backend (if needed)...\n");
     easy_cpace_monocypher_cleanup();
 
+    // No special cleanup for macOS - handled by sanitizer suppression
+
     return failures; // Return non-zero if tests failed
 }

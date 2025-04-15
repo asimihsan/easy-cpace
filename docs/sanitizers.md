@@ -171,7 +171,7 @@ When using the `sanitizers` target, reports are saved in the `sanitizer_reports`
 2. **UBSan can be combined** with any other sanitizer.
 3. **MSan requires Clang** - GCC does not fully support MemorySanitizer.
 4. **LSan as a standalone tool** is only available on Linux.
-5. **Platform compatibility** - All sanitizers work on Linux. On macOS, ASan, UBSan, and TSan are well-supported, but MSan may have limitations.
+5. **Platform compatibility** - All sanitizers work on Linux. On macOS, ASan, UBSan, and TSan are well-supported, but MSan has limitations with Apple's Clang.
 
 ## Troubleshooting
 
@@ -182,6 +182,12 @@ When using the `sanitizers` target, reports are saved in the `sanitizer_reports`
 2. **Missing symbolization** - If you see raw addresses instead of source locations, make sure you have debugging symbols enabled and tools like `llvm-symbolizer` are in your PATH.
 
 3. **MSan false positives** - MemorySanitizer requires that all code, including system libraries, is instrumented. If you see many false positives, you might need a custom-built instrumented stdlib.
+
+4. **macOS Objective-C runtime leaks** - On macOS, AddressSanitizer may report memory leaks from the Objective-C runtime and Darwin system libraries. These are generally false positives. Use the following command to run tests with these leaks suppressed:
+   ```bash
+   just macos-asan-test
+   ```
+   This uses a suppression file in `sanitizer_reports/macos_leak_suppressions.txt`.
 
 ### Environment Setup
 

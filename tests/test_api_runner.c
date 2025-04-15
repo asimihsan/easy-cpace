@@ -47,5 +47,7 @@ int main(void)
     // Cleanup Monocypher backend (optional)
     easy_cpace_monocypher_cleanup();
 
+    // No special cleanup for macOS - handled by sanitizer suppression
+
     return result;
 }

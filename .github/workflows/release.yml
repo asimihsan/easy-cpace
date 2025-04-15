@@ -1,0 +1,113 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Trigger only on version tags like v1.0.0
+
+jobs:
+  build_and_release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases and upload assets
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to ensure tags are available
+
+      - name: Verify CI Success on Main Branch for Commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to query the API
+          COMMIT_SHA: ${{ github.sha }}             # The commit SHA associated with the tag
+        run: |
+          echo "Checking CI status for commit $COMMIT_SHA on main branch..."
+
+          # Query for successful runs of the 'CI' workflow (ci.yml) on the 'main' branch for the specific commit
+          # We limit to 1 because we only need to know if at least one exists.
+          # We use jq to count the number of results returned.
+          success_count=$(gh run list --workflow ci.yml --branch main --commit "$COMMIT_SHA" --status success --limit 1 --json conclusion | jq 'length')
+
+          echo "Found $success_count successful CI run(s) for commit $COMMIT_SHA on main."
+
+          if [[ "$success_count" -eq 0 ]]; then
+            echo "::error::Release blocked: No successful CI workflow run found for commit $COMMIT_SHA on the main branch." >&2
+            echo "::error::Please ensure the CI checks passed on the 'main' branch for this commit before tagging it for release." >&2
+            exit 1 # Fail the workflow step
+          else
+            echo "✅ CI checks passed for this commit on main. Proceeding with release."
+          fi
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true # Assuming mise setup might need this based on other workflows
+          install: true      # Ensure tools defined in mise config are installed
+
+      - name: Setup Environment (mise + just)
+        run: |
+          mise x -- just setup
+
+      - name: Build project (needed for dependencies)
+        run: |
+          mise x -- just build
+
+      - name: Get Git Information
+        id: git_info
+        run: |
+          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Run Amalgamation
+        env:
+          # Pass Git info to the amalgamation script via environment variables
+          GIT_TAG: ${{ steps.git_info.outputs.tag }}
+          GIT_SHA: ${{ steps.git_info.outputs.short_sha }}
+        run: |
+          mise x -- just amalgamate
+
+      - name: Package artifacts
+        run: |
+          VERSION=${{ steps.git_info.outputs.tag }} # e.g., v1.0.0
+          SHORT_SHA=${{ steps.git_info.outputs.short_sha }}
+          PROJECT_NAME="easy_cpace" # Define your project name here
+          DIST_DIR="dist" # Directory where amalgamate places files
+          RELEASE_DIR="release_assets"
+
+          echo "Packaging version ${VERSION} (SHA: ${SHORT_SHA})..."
+          mkdir $RELEASE_DIR
+
+          # Copy amalgamated files with version in name
+          cp "${DIST_DIR}/${PROJECT_NAME}_amalgamated.c" "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}.c"
+          cp "${DIST_DIR}/${PROJECT_NAME}_amalgamated.h" "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}.h"
+
+          # Create source tarball (using git archive is cleaner)
+          git archive --format=tar --prefix="${PROJECT_NAME}-${VERSION}/" -o "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.tar" HEAD
+          gzip "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.tar"
+
+          # Create source zip (excluding build artifacts, .git, etc.)
+          zip -r "${RELEASE_DIR}/${PROJECT_NAME}-${VERSION}-src.zip" . -x ".git/*" -x "build*" -x "dist/*" -x "${RELEASE_DIR}/*" -x ".*" -x "__pycache__/*" -x "*.pyc" -x "venv/*" -x ".venv/*"
+
+          echo "Assets packaged:"
+          ls $RELEASE_DIR
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.git_info.outputs.tag }}
+          name: Release ${{ steps.git_info.outputs.tag }}
+          body: |
+            Official release of EasyCPace version ${{ steps.git_info.outputs.tag }} (${{ steps.git_info.outputs.short_sha }}).
+
+            **Artifacts:**
+            - Amalgamated source files (`easy_cpace-${{ steps.git_info.outputs.tag }}.c`/`.h`)
+            - Source code archive (`easy_cpace-${{ steps.git_info.outputs.tag }}-src.tar.gz`)
+            - Source code archive (`easy_cpace-${{ steps.git_info.outputs.tag }}-src.zip`)
+          draft: false
+          prerelease: false # Set to true for pre-releases (e.g., v1.0.0-beta.1)
+          files: |
+            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}.c
+            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}.h
+            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}-src.tar.gz
+            release_assets/easy_cpace-${{ steps.git_info.outputs.tag }}-src.zip

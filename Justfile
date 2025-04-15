@@ -102,6 +102,11 @@ lint-fix:
 
     set -euo pipefail
 
+    if [[ "$OSTYPE" == "darwin"* ]];
+    then
+        export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    fi
+
     # Check if clang-format and clang-tidy are installed
     if ! command -v clang-format &> /dev/null; then
         echo "⛔ Error: clang-format is not installed or not in PATH"
@@ -141,6 +146,11 @@ lint:
     #!/usr/bin/env bash
 
     set -euo pipefail
+
+    if [[ "$OSTYPE" == "darwin"* ]];
+    then
+        export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    fi
 
     # Check if clang-format and clang-tidy are installed
     if ! command -v clang-format &> /dev/null; then

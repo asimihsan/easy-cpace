@@ -1,0 +1,59 @@
+name: Fuzzing
+
+on:
+  workflow_dispatch: # Allow manual triggering
+  workflow_run:
+    workflows: ["CI"] # Trigger after the main CI workflow
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  fuzz:
+    name: Run Fuzzers
+    # Only run if the triggering CI workflow was successful AND it was for the main branch
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest # Fuzzing is often done on Linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+
+      - name: Install Clang (ensure consistent version with build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-14 llvm-14
+
+      - name: Setup Environment (mise + just)
+        env:
+          # Ensure CC points to the correct Clang for Justfile commands
+          CC: clang-14
+          CXX: clang++-14
+        run: |
+          mise x -- just setup
+
+      - name: Build Fuzzers
+        env:
+          CC: clang-14
+          CXX: clang++-14
+        run: mise x -- just build-fuzz
+
+      - name: Run Fuzzer (Short Duration)
+        run: |
+          # Run the fuzzer for a limited time (e.g., 60 seconds) in CI
+          # Use -max_total_time for duration limit
+          # Use -error_exitcode=1 to make the step fail if a crash is found
+          mise x -- just run-fuzzer fuzz_protocol_inputs -- -max_total_time=60 -error_exitcode=1
+
+      # Optional: Upload fuzzing artifacts (corpus, crashes)
+      - name: Upload Fuzzing Artifacts on Failure
+        if: failure() # Only upload if the fuzzer found a crash
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzzing-artifacts
+          path: |
+            corpus/
+            crashes/

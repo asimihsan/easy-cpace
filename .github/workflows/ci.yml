@@ -8,8 +8,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build & Test
+  build_and_test: # Renamed job for clarity
+    name: Build & Test (Matrix)
     uses: ./.github/workflows/build.yml
     with:
       run_full_ci: true
+      build_fuzzers: true # <<< ADD THIS LINE
+    # Add secrets if needed by build.yml (e.g., MISE_PAT)
+    secrets: inherit

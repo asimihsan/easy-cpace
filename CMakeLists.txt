@@ -22,6 +22,7 @@ option(CPACE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(CPACE_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 option(CPACE_ENABLE_MSAN "Enable MemorySanitizer (Clang only)" OFF)
 option(CPACE_ENABLE_LSAN "Enable LeakSanitizer standalone (Linux only)" OFF)
+option(CPACE_BUILD_FUZZERS "Build fuzz testing targets (Requires Clang)" OFF)
 
 message(STATUS "Build configuration:")
 message(STATUS "  Build Tests:    ${CPACE_BUILD_TESTS}")
@@ -32,6 +33,7 @@ message(STATUS "  UBSan:          ${CPACE_ENABLE_UBSAN}")
 message(STATUS "  TSan:           ${CPACE_ENABLE_TSAN}")
 message(STATUS "  MSan:           ${CPACE_ENABLE_MSAN}")
 message(STATUS "  LSan:           ${CPACE_ENABLE_LSAN}")
+message(STATUS "  Build Fuzzers:  ${CPACE_BUILD_FUZZERS}")
 
 # --- Fetch Dependencies ---
 include(FetchContent)
@@ -168,6 +170,16 @@ endif()
 # --- Add Examples ---
 if(CPACE_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+# --- Add Fuzzers (Conditionally) ---
+if(CPACE_BUILD_FUZZERS)
+    # Check if Clang is the compiler BEFORE trying to add the subdirectory
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(WARNING "CPACE_BUILD_FUZZERS is ON, but the C compiler is not Clang (${CMAKE_C_COMPILER_ID}). Fuzz targets cannot be built.")
+    else()
+        add_subdirectory(fuzz)
+    endif()
 endif()
 
 # --- Installation Rules (Basic Example) ---

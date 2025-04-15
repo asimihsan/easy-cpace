@@ -273,4 +273,11 @@ cython_debug/
 .pypirc
 # Ignore sanitizer reports
 sanitizer_reports/
-build-asan-ubsan
+
+# Build directories
+/build*/
+/cmake-build-*/
+
+# Fuzzing artifacts
+/corpus/
+/crashes/

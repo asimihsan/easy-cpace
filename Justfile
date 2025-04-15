@@ -32,6 +32,31 @@ build-debug-logging:
     mise x -- cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON --debug-output -S . -B build -G Ninja -DCPACE_ENABLE_DEBUG_LOGGING=ON
     mise x -- cmake --build build
 
+# Build fuzz targets (requires Clang)
+build-fuzz:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ "$OSTYPE" == "darwin"* ]];
+    then
+        export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    fi
+    
+    # Ensure Clang is available
+    if ! command -v clang &> /dev/null; then
+        echo "⛔ Error: clang compiler is required for fuzzing but not found."
+        echo "Please install Clang or ensure it's in your PATH."
+        exit 1
+    fi
+    
+    # Configure and build with fuzzing enabled
+    # Note: Fuzzer flags include ASan/UBSan by default in fuzz/CMakeLists.txt
+    mise x -- cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -S . -B build-fuzz -G Ninja \
+        -DCPACE_BUILD_FUZZERS=ON \
+        -DCMAKE_C_COMPILER=clang
+    mise x -- cmake --build build-fuzz
+
 # --- Sanitizer Builds ---
 build-asan:
     mise x -- cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_VERBOSE_MAKEFILE=ON -S . -B build-asan -G Ninja -DCPACE_ENABLE_ASAN=ON
@@ -49,7 +74,7 @@ build-msan:
     #!/usr/bin/env bash
     set -euo pipefail
     
-    # Make sure we're using clang for MSan
+    # Make sure we are using clang for MSan
     if ! command -v clang &> /dev/null; then
         echo "Error: clang is required for MSan but not found in PATH"
         exit 1
@@ -97,6 +122,40 @@ run-benchmark-ubsan:
 
 run-benchmark-asan-ubsan:
     ASAN_OPTIONS=detect_leaks=1 mise x -- ./build-asan-ubsan/examples/benchmark
+
+# Run a specific fuzzer target
+# Usage: just run-fuzzer <fuzzer_name> [fuzzer_args...]
+# Example: just run-fuzzer fuzz_protocol_inputs
+run-fuzzer fuzzer_name +fuzzer_args='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    FUZZER_EXE="./build-fuzz/fuzz/{{fuzzer_name}}"
+    CORPUS_DIR="./corpus/{{fuzzer_name}}"
+    CRASH_DIR="./crashes/{{fuzzer_name}}"
+
+    if [ ! -f "$FUZZER_EXE" ]; then
+        echo "⛔ Error: Fuzzer executable '$FUZZER_EXE' not found."
+        echo "Run 'just build-fuzz' first."
+        exit 1
+    fi
+
+    # Create directories if they don't exist
+    mkdir -p "$CORPUS_DIR"
+    mkdir -p "$CRASH_DIR"
+
+    echo "🚀 Starting fuzzer '{{fuzzer_name}}'..."
+    echo "   Corpus: $CORPUS_DIR"
+    echo "   Crashes: $CRASH_DIR"
+    echo "   Args: {{fuzzer_args}}"
+
+    # Run the fuzzer. Pass corpus dir first, then optional seeds/args.
+    # Use -artifact_prefix to store crashes in a dedicated directory.
+    "$FUZZER_EXE" "$CORPUS_DIR" -artifact_prefix="$CRASH_DIR/" {{fuzzer_args}}
+
+# Run the main protocol input fuzzer
+fuzz: build-fuzz
+    @just run-fuzzer fuzz_protocol_inputs
 
 lint-fix:
     #!/usr/bin/env bash
@@ -212,7 +271,8 @@ format-file file:
     clang-format -i "{{file}}"
 
 clean:
-    rm -rf build
+    rm -rf build build-asan build-ubsan build-tsan build-msan build-asan-ubsan build-fuzz
+    rm -rf corpus crashes
     rm -rf cmake-build-debug
 
 clean-build-test: clean build test

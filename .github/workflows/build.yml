@@ -4,99 +4,109 @@ on:
   workflow_call:
     inputs:
       run_full_ci:
-        description: 'Whether to run the full CI suite'
+        description: 'Whether to run the full CI suite (build, test, lint)'
+        required: false
+        default: false
+        type: boolean
+      build_fuzzers:
+        description: 'Whether to build fuzz targets (requires Clang)'
         required: false
         default: false
         type: boolean
 
 jobs:
-  build-linux:
-    name: Build CPace on Linux
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.os }} / ${{ matrix.compiler.name }}
+    strategy:
+      fail-fast: false # Don't cancel all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler:
+          - name: default # GCC on Linux, AppleClang on macOS
+            cc: "" # Let CMake find default
+            cxx: ""
+            cmake_opts: ""
+          - name: clang
+            cc: clang
+            cxx: clang++
+            cmake_opts: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+        include:
+          # Add specific Clang versions if needed, e.g., for Linux
+          - os: ubuntu-latest
+            compiler:
+              name: clang-14 # Example specific version
+              cc: clang-14
+              cxx: clang++-14
+              cmake_opts: "-DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang++-14"
+
+    runs-on: ${{ matrix.os }}
     env:
+      # Set compiler env vars if specified in matrix
+      CC: ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }}
+      # Add GITHUB_TOKEN for mise if needed
       GITHUB_TOKEN: ${{ secrets.MISE_PAT }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for benchmarking against previous commit
+          fetch-depth: 0
 
       - name: Setup Mise
         uses: jdx/mise-action@v2
-        with:
-          experimental: true
-          install: true
 
-      - name: Cache Homebrew LLVM
-        uses: actions/cache@v3
+      - name: Cache Homebrew LLVM (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4 # Use v4
         with:
           path: |
             ~/Library/Caches/Homebrew/downloads
-            /opt/homebrew/Cellar/llvm
-            /opt/homebrew/Cellar/z3
-            /opt/homebrew/opt/llvm
-            /opt/homebrew/opt/z3
-          key: ${{ runner.os }}-brew-llvm-${{ hashFiles('Justfile') }}
+            /opt/homebrew/Cellar/llvm* # Cache specific LLVM versions if installed
+            /opt/homebrew/opt/llvm*
+          key: ${{ runner.os }}-brew-llvm-${{ hashFiles('Justfile', 'mise.toml') }} # Include mise.toml
           restore-keys: |
             ${{ runner.os }}-brew-llvm-
 
-      - name: Setup Environment
+      - name: Install Clang (Linux)
+        if: runner.os == 'Linux' && matrix.compiler.name == 'clang-14'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-14 llvm-14
+
+      - name: Setup Environment (mise + just)
         run: |
           mise x -- just setup
 
-      - name: Run CI
+      - name: Configure CMake
+        run: |
+          CMAKE_EXTRA_OPTS=""
+          if [[ "${{ inputs.build_fuzzers }}" == "true" && "${{ matrix.compiler.name }}" == "clang"* ]]; then
+            CMAKE_EXTRA_OPTS="$CMAKE_EXTRA_OPTS -DCPACE_BUILD_FUZZERS=ON"
+          fi
+          # Add sanitizer options if needed for specific builds
+          # CMAKE_EXTRA_OPTS="$CMAKE_EXTRA_OPTS -DCPACE_ENABLE_ASAN=ON"
+          echo "Using CMake opts: ${{ matrix.compiler.cmake_opts }} $CMAKE_EXTRA_OPTS"
+          mise x -- cmake -S . -B build -G Ninja ${{ matrix.compiler.cmake_opts }} $CMAKE_EXTRA_OPTS
+
+      - name: Build
+        run: mise x -- cmake --build build
+
+      - name: Test (if full CI)
         if: inputs.run_full_ci
-        run: mise x -- just ci
-
-      - name: Build and Test Only
-        if: "!inputs.run_full_ci"
         run: |
-          mise x -- just build
-          mise x -- just test
+          cd build
+          mise x -- ctest --output-on-failure
+          cd ..
 
-  build-macos:
-    name: Build CPace on macOS
-    needs: build-linux
-    runs-on: macos-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.MISE_PAT }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Lint (if full CI, run only once, e.g., on Linux default)
+        if: inputs.run_full_ci && matrix.os == 'ubuntu-latest' && matrix.compiler.name == 'default'
+        run: mise x -- just lint
+
+      # Upload build artifacts if fuzzers were built
+      - name: Upload Fuzzer Build Artifacts
+        if: inputs.build_fuzzers && matrix.compiler.name == 'clang-14' && runner.os == 'ubuntu-latest' # Only upload from one specific clang build
+        uses: actions/upload-artifact@v4
         with:
-          fetch-depth: 0  # Fetch all history for benchmarking against previous commit
-
-      - name: Setup Mise
-        uses: jdx/mise-action@v2
-        with:
-          experimental: true
-          install: true
-
-      - name: Cache Homebrew LLVM
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/Homebrew/downloads
-            /opt/homebrew/Cellar/llvm
-            /opt/homebrew/Cellar/z3
-            /opt/homebrew/opt/llvm
-            /opt/homebrew/opt/z3
-          key: ${{ runner.os }}-brew-llvm-${{ hashFiles('Justfile') }}
-          restore-keys: |
-            ${{ runner.os }}-brew-llvm-
-
-      - name: Setup Environment
-        run: |
-          mise x -- just setup
-
-      - name: Run CI
-        if: inputs.run_full_ci
-        run: mise x -- just ci
-
-      - name: Build and Test Only
-        if: "!inputs.run_full_ci"
-        run: |
-          mise x -- just build
-          mise x -- just test
+          name: fuzzer-build-${{ matrix.os }}-${{ matrix.compiler.name }}
+          path: build/fuzz/ # Upload the executables from the fuzz build dir

@@ -30,9 +30,6 @@ jobs:
       - name: Setup Environment
         run: |
           mise x -- just setup
-          
-          # Install hyperfine in mise
-          mise use hyperfine@latest
       
       - name: Create benchmarks directory
         run: mkdir -p benchmarks

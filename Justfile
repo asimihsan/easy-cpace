@@ -86,7 +86,8 @@ run-basic-exchange:
     mise x -- ./build/examples/basic_exchange
 
 run-benchmark:
-    mise x -- ./build/examples/benchmark
+    mise x -- hyperfine --warmup 3 \
+        ./build/examples/benchmark
 
 run-benchmark-asan:
     ASAN_OPTIONS=detect_leaks=1 mise x -- ./build-asan/examples/benchmark
@@ -239,10 +240,12 @@ tsan: build-tsan test-tsan
 msan: build-msan test-msan
 
 # Run all CI checks (build, test, lint, benchmark)
-ci: build lint test run-benchmark
+ci: clean build lint test run-benchmark
 
 # Run CI with sanitizers (ASan + UBSan)
-ci-sanitizers: lint build-asan-ubsan test-asan-ubsan run-benchmark-asan-ubsan
+ci-sanitizers: lint build-asan-ubsan test-asan-ubsan run-benchmark
+
+ci-sanitizers-mac: clean build lint test macos-asan-test run-benchmark
 
 # Run all sanitizers and generate reports
 sanitizers:

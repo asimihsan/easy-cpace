@@ -26,11 +26,21 @@ jobs:
             cc: "" # Let CMake find default
             cxx: ""
             cmake_opts: ""
-          - name: clang
-            cc: clang
-            cxx: clang++
-            cmake_opts: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+          # Generic 'clang' entry removed, specific versions/OS handled in 'include'
         include:
+          # Use default system clang on Linux for this entry
+          - os: ubuntu-latest
+            compiler:
+              name: clang
+              cc: clang
+              cxx: clang++
+              cmake_opts: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+          # Use Homebrew clang on macOS for this entry to ensure fuzzer runtime is available
+          - os: macos-latest
+            compiler:
+              name: clang # Still named clang, but uses brew's version
+              # No cc/cxx here, rely on cmake_opts
+              cmake_opts: "-DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++"
           # Add specific Clang versions if needed, e.g., for Linux
           - os: ubuntu-latest
             compiler:
@@ -38,12 +48,12 @@ jobs:
               cc: clang-14
               cxx: clang++-14
               cmake_opts: "-DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang++-14"
-
+ 
     runs-on: ${{ matrix.os }}
     env:
-      # Set compiler env vars if specified in matrix
-      CC: ${{ matrix.compiler.cc }}
-      CXX: ${{ matrix.compiler.cxx }}
+      # Set compiler env vars ONLY if explicitly defined in the matrix (now only for clang-14 on Linux)
+      CC: ${{ matrix.compiler.cc || '' }}
+      CXX: ${{ matrix.compiler.cxx || '' }}
       # Add GITHUB_TOKEN for mise if needed
       GITHUB_TOKEN: ${{ secrets.MISE_PAT }}
 

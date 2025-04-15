@@ -140,6 +140,15 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
     DEBUG_PTR("prs", prs);
     DEBUG_LOG("prs_len = %zu", prs_len);
 
+// Helper macro for hash updates
+#define HASH_UPDATE_OR_CLEANUP(hctx, data, len)                                                                        \
+    do {                                                                                                               \
+        if (ctx->provider->hash_iface->hash_update((hctx), (data), (len)) != CRYPTO_OK) {                              \
+            err = CPACE_ERROR_CRYPTO_FAIL;                                                                             \
+            goto cleanup;                                                                                              \
+        }                                                                                                              \
+    } while (0)
+
     // Use incremental hashing to avoid large buffer allocation
     crypto_hash_ctx_t *hash_ctx = ctx->provider->hash_iface->hash_new();
     if (!hash_ctx) {
@@ -150,12 +159,8 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 
     // 1. Construct and hash DSI label
     uint8_t dsi_len = (uint8_t)CPACE_CRYPTO_DSI_LEN;
-    if (ctx->provider->hash_iface->hash_update(hash_ctx, &dsi_len, 1) != CRYPTO_OK ||
-        ctx->provider->hash_iface->hash_update(hash_ctx, (const uint8_t *)CPACE_CRYPTO_DSI, CPACE_CRYPTO_DSI_LEN) !=
-            CRYPTO_OK) {
-        err = CPACE_ERROR_CRYPTO_FAIL;
-        goto cleanup;
-    }
+    HASH_UPDATE_OR_CLEANUP(hash_ctx, &dsi_len, 1);
+    HASH_UPDATE_OR_CLEANUP(hash_ctx, (const uint8_t *)CPACE_CRYPTO_DSI, CPACE_CRYPTO_DSI_LEN);
 
     // 2. Add PRS with length prefix
     if (prs_len > 255) {
@@ -163,11 +168,8 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
         goto cleanup;
     }
     uint8_t prs_len_byte = (uint8_t)prs_len;
-    if (ctx->provider->hash_iface->hash_update(hash_ctx, &prs_len_byte, 1) != CRYPTO_OK ||
-        ctx->provider->hash_iface->hash_update(hash_ctx, prs, prs_len) != CRYPTO_OK) {
-        err = CPACE_ERROR_CRYPTO_FAIL;
-        goto cleanup;
-    }
+    HASH_UPDATE_OR_CLEANUP(hash_ctx, &prs_len_byte, 1);
+    HASH_UPDATE_OR_CLEANUP(hash_ctx, prs, prs_len);
 
     // 3. Calculate and add ZPAD
     // Calculate length based on same formula as in cpace_construct_generator_hash_input
@@ -186,52 +188,34 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 
     // Add ZPAD length and zeros
     uint8_t zpad_len_byte = (uint8_t)zpad_len;
-    if (ctx->provider->hash_iface->hash_update(hash_ctx, &zpad_len_byte, 1) != CRYPTO_OK) {
-        err = CPACE_ERROR_CRYPTO_FAIL;
-        goto cleanup;
-    }
+    HASH_UPDATE_OR_CLEANUP(hash_ctx, &zpad_len_byte, 1);
 
     // Add zero bytes one at a time to avoid buffer allocation
     uint8_t zero_byte = 0;
     for (size_t i = 0; i < zpad_len; i++) {
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &zero_byte, 1) != CRYPTO_OK) {
-            err = CPACE_ERROR_CRYPTO_FAIL;
-            goto cleanup;
-        }
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, &zero_byte, 1);
     }
 
     // 4. Add Channel ID if present
     if (ctx->ci_len > 0) {
         uint8_t ci_len_byte = (uint8_t)ctx->ci_len;
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &ci_len_byte, 1) != CRYPTO_OK ||
-            ctx->provider->hash_iface->hash_update(hash_ctx, ctx->ci_buf, ctx->ci_len) != CRYPTO_OK) {
-            err = CPACE_ERROR_CRYPTO_FAIL;
-            goto cleanup;
-        }
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, &ci_len_byte, 1);
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, ctx->ci_buf, ctx->ci_len);
     } else {
         // Add empty CI with length 0
         uint8_t zero_len = 0;
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &zero_len, 1) != CRYPTO_OK) {
-            err = CPACE_ERROR_CRYPTO_FAIL;
-            goto cleanup;
-        }
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, &zero_len, 1);
     }
 
     // 5. Add Session ID if present
     if (ctx->sid_len > 0) {
         uint8_t sid_len_byte = (uint8_t)ctx->sid_len;
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &sid_len_byte, 1) != CRYPTO_OK ||
-            ctx->provider->hash_iface->hash_update(hash_ctx, ctx->sid_buf, ctx->sid_len) != CRYPTO_OK) {
-            err = CPACE_ERROR_CRYPTO_FAIL;
-            goto cleanup;
-        }
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, &sid_len_byte, 1);
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, ctx->sid_buf, ctx->sid_len);
     } else {
         // Add empty SID with length 0
         uint8_t zero_len = 0;
-        if (ctx->provider->hash_iface->hash_update(hash_ctx, &zero_len, 1) != CRYPTO_OK) {
-            err = CPACE_ERROR_CRYPTO_FAIL;
-            goto cleanup;
-        }
+        HASH_UPDATE_OR_CLEANUP(hash_ctx, &zero_len, 1);
     }
 
     // 6. Finalize hash
@@ -261,6 +245,7 @@ cleanup:
     if (hash_ctx) {
         ctx->provider->hash_iface->hash_free(hash_ctx);
     }
+#undef HASH_UPDATE_OR_CLEANUP // Undefine macro at the end of its scope
 
     DEBUG_EXIT("calculate_generator_g", err);
     return err;

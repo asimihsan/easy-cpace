@@ -333,3 +333,53 @@ sanitizers-verbose:
 # have expected memory leaks that are not actual leaks in the application code
 macos-asan-test:
     ./scripts/run_macos_asan.sh
+
+# --- Amalgamation ---
+
+# Generate amalgamated source files (requires build to fetch dependencies)
+amalgamate: build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    MONO_DIR="build/_deps/monocypher-src/src"
+    OUTPUT_DIR="dist"
+    if [ ! -d "$MONO_DIR" ]; then
+        echo "⛔ Error: Monocypher source directory not found at '$MONO_DIR'."
+        echo "   Ensure you have run 'just build' first."
+        exit 1
+    fi
+    echo "🐍 Running amalgamation script..."
+    mise x -- python scripts/amalgamate.py --monocypher-dir "$MONO_DIR" --output-dir "$OUTPUT_DIR"
+
+# Generate amalgamated source files with debug logging enabled
+amalgamate-debug: build-debug-logging
+    #!/usr/bin/env bash
+    set -euo pipefail
+    MONO_DIR="build/_deps/monocypher-src/src"
+    OUTPUT_DIR="dist"
+    if [ ! -d "$MONO_DIR" ]; then
+        echo "⛔ Error: Monocypher source directory not found at '$MONO_DIR'."
+        echo "   Ensure you have run 'just build-debug-logging' first."
+        exit 1
+    fi
+    echo "🐍 Running amalgamation script (with debug)..."
+    mise x -- python scripts/amalgamate.py --monocypher-dir "$MONO_DIR" --output-dir "$OUTPUT_DIR" --debug
+
+# Test the amalgamated build using a simple example
+# This compiles the example directly using the amalgamated files, bypassing CMake for this specific test.
+test-amalgamation: amalgamate
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🧪 Compiling amalgamation test example..."
+    # Use clang or gcc. Add -lm if math functions were used (not needed here).
+    # Add platform-specific libs if needed (e.g., -lbcrypt on Windows if BCryptGenRandom was used *directly* by example)
+    # The amalgamated source itself handles internal linking needs.
+    CC=${CC:-cc} # Use environment CC or default to 'cc'
+    CFLAGS="-std=c99 -Wall -Wextra -pedantic -I./dist" # Include dist for the .h
+    LDFLAGS="" # Add linker flags if needed (e.g. -lbcrypt for Windows)
+    if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32"* ]]; then
+        LDFLAGS="-lbcrypt" # Link bcrypt on Windows for RNG
+    fi
+    "$CC" $CFLAGS examples/basic_exchange.c dist/easy_cpace_amalgamated.c -o build/amalgamated_test_runner $LDFLAGS
+    echo "🏁 Running amalgamated test..."
+    ./build/amalgamated_test_runner
+

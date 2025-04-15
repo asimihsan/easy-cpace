@@ -18,7 +18,7 @@
 ## Features
 
 * Implements **CPace-X25519-SHA512** based on `draft-irtf-cfrg-cpace-13`.
-* Uses the excellent [Monocypher](https://monocypher.org/) library for cryptographic primitives (X25519, SHA-512, secure RNG, constant-time operations).
+* Uses the excellent [Monocypher](https://monocypher.org/) library for cryptographic primitives (X25519, SHA-512, constant-time operations).
 * Dependency on Monocypher managed automatically via CMake's `WorkspaceContent`.
 * Simple 3-step API: `_start`, `_respond`, `_finish`.
 * Context structure (`cpace_ctx_t`) exposed for **static/stack allocation**, avoiding dynamic memory allocation in the core protocol flow.

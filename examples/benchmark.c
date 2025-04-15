@@ -9,7 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define NUM_ITERATIONS 10000
+#define NUM_ITERATIONS 1000
 #define PASSWORD "test-password"
 #define CHANNEL_ID "test-channel"
 #define USER_ID_A "alice"

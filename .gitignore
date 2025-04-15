@@ -272,3 +272,4 @@ cython_debug/
 .pypirc
 # Ignore sanitizer reports
 sanitizer_reports/
+build-asan-ubsan

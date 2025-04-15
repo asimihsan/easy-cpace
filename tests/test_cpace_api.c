@@ -165,6 +165,9 @@ void test_basic_initiator_responder_exchange_ok(void)
 #endif
     TEST_ASSERT_FALSE_MESSAGE(is_zero, "Responder msg2 should not be all zeros");
 
+    // Clear isk_i buffer to ensure it doesn't contain uninitialized values
+    memset(isk_i, 0, CPACE_ISK_BYTES);
+
     // 4. Initiator Finish
     err = cpace_initiator_finish(&ctx_i, msg2, isk_i);
 #ifdef CPACE_DEBUG_LOG

@@ -245,7 +245,7 @@ static int monocypher_hash_digest(const uint8_t *data, size_t len, uint8_t *out,
     }
 
     // Compute full SHA-512 hash (64 bytes)
-    uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES];
+    uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES] = {0}; // Initialize all bytes to zero
 
     // Use direct Monocypher function for the one-shot case
     crypto_sha512(full_hash, data, len);

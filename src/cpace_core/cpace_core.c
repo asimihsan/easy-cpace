@@ -236,7 +236,7 @@ static cpace_error_t calculate_generator_g(cpace_ctx_t *ctx, const uint8_t *prs,
 
     // 6. Finalize hash
     // Note that SHA-512 produces 64 bytes, but we only need first 32 for map_to_curve
-    uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES]; // Full 64-byte SHA-512 output
+    uint8_t full_hash[CPACE_CRYPTO_HASH_BYTES] = {0}; // Full 64-byte SHA-512 output, initialize to zero
 
     if (ctx->provider->hash_iface->hash_final(hash_ctx, full_hash) != CRYPTO_OK) {
         err = CPACE_ERROR_CRYPTO_FAIL;

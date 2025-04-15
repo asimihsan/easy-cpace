@@ -339,6 +339,7 @@ macos-asan-test:
 # Generate amalgamated source files (requires build to fetch dependencies)
 amalgamate:
     #!/usr/bin/env bash
+
     set -euo pipefail
     MONO_DIR="build/_deps/monocypher-src/src"
     OUTPUT_DIR="dist"
@@ -349,6 +350,44 @@ amalgamate:
     fi
     echo "🐍 Running amalgamation script..."
     mise x -- python scripts/amalgamate.py --monocypher-dir "$MONO_DIR" --output-dir "$OUTPUT_DIR"
+
+    if [[ "$OSTYPE" == "darwin"* ]];
+    then
+        export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    fi
+
+    # Check if clang-format and clang-tidy are installed
+    if ! command -v clang-format &> /dev/null; then
+        echo "⛔ Error: clang-format is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
+
+    if ! command -v clang-tidy &> /dev/null; then
+        echo "⛔ Error: clang-tidy is not installed or not in PATH"
+        echo "Run 'just setup' to install required tools"
+        exit 1
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # On macOS, add system includes path
+        SDK_PATH=$(xcrun --show-sdk-path)
+        SDK_INCLUDE=-isystem${SDK_PATH}/usr/include
+    else
+        SDK_INCLUDE=""
+    fi
+
+    clang-format -i \
+        dist/easy_cpace_amalgamated.h \
+        dist/easy_cpace_amalgamated.c
+
+    clang-tidy -fix -fix-errors -p=build \
+        dist/easy_cpace_amalgamated.h \
+        dist/easy_cpace_amalgamated.c \
+        -- \
+        -std=c99 "${SDK_INCLUDE}" \
+        -I${OUTPUT_DIR} -isystem${OUTPUT_DIR} \
+         
 
 # Test the amalgamated build using a simple example
 # This compiles the example directly using the amalgamated files, bypassing CMake for this specific test.
